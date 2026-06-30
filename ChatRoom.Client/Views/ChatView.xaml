@@ -50,6 +50,9 @@
                 <Button Content="连接" Command="{Binding ConnectCommand}"
                         Width="60" Height="26" 
                         Margin="12,0,0,0" FontSize="12"/>
+                
+                <TextBlock Text="{Binding UserName}" FontSize="13" 
+                           VerticalAlignment="Center" Margin="6,0,0,0" Foreground="#2196F3"/>
             </StackPanel> 
         </Border>
         
@@ -75,34 +78,19 @@
         <!-- 底部：输入区域 -->
         <Border Grid.Row="2" Background="#FAFAFA" 
                 Padding="12" BorderBrush="#E0E0E0" BorderThickness="0,1,0,0">
-            <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                </Grid.RowDefinitions>
-                
-                <!-- 昵称行 -->
-                <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,6">
-                    <TextBlock Text="昵称"
-                               FontSize="13"  
-                               VerticalAlignment="Center" Margin="0,0,8,0"/>
-                    <TextBox Text="{Binding UserName, UpdateSourceTrigger=PropertyChanged}"
-                             Width="160" Height="28" FontSize="13"
-                             VerticalAlignment="Center"/>   
-                </StackPanel>
-                
-                <!-- 消息输入行 -->
-                <StackPanel Grid.Row="1" Orientation="Horizontal">
-                    <TextBlock Text="消息" FontSize="13"
-                               VerticalAlignment="Center" Margin="0,0,8,0"/>
-                    <TextBox Text="{Binding Message, UpdateSourceTrigger=PropertyChanged}"
-                             Width="400" Height="28" FontSize="13"
-                             VerticalAlignment="Center"/>
-                    <Button Content="发送" Command="{Binding SendCommand}"
-                            Width="60" Height="28" 
-                            Margin="8,0,0,0" FontSize="12"/>
-                </StackPanel>
-            </Grid>
+
+            <!-- 消息输入行 -->
+            <StackPanel Grid.Row="1" Orientation="Horizontal">
+                <TextBlock Text="消息" FontSize="13"
+                           VerticalAlignment="Center" Margin="0,0,8,0"/>
+                <TextBox Text="{Binding Message, UpdateSourceTrigger=PropertyChanged}"
+                         Width="400" Height="28" FontSize="13"
+                         VerticalAlignment="Center"/>
+                <Button Content="发送" Command="{Binding SendCommand}"
+                        Width="60" Height="28" 
+                        Margin="8,0,0,0" FontSize="12"/>
+            </StackPanel>
+           
         </Border>
     </Grid>
 </Window>
