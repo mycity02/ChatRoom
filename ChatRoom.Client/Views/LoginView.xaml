@@ -7,9 +7,9 @@
         mc:Ignorable="d"
         WindowStartupLocation="CenterScreen"
         ResizeMode="NoResize"
-        Title="聊天室-登录" Height="350" Width="400">
+        Title="聊天室-登录" Height="450" Width="450">
     <Grid Background="#F5F5F5">
-        <Border Width="320" Height="280"
+        <Border Width="360" 
                 Background="White" CornerRadius="8"
                 BorderBrush="#E0E0E0" BorderThickness="1">
             <StackPanel Margin="30">
