@@ -11,6 +11,7 @@ namespace ChatRoom.Client.Services
         private readonly HubConnection _hubConnection;
         public event Action<ChatMessage> MessageReceived;
         public event Action<List<ChatMessage>> HistoryMessagesLoad;
+        public event Action<List<Conversation>> ConversationLoad;
 
         public ChatService()
         {
@@ -34,17 +35,66 @@ namespace ChatRoom.Client.Services
             {
                 HistoryMessagesLoad?.Invoke(messages);
             });
+
+            // 一对一聊天接收消息事件
+            _hubConnection.On<ChatMessage> ("ReceivePrivateMessage", (chatMessage) =>
+            {
+                MessageReceived?.Invoke(chatMessage);
+            });
+
+            // 会话列表加载
+            _hubConnection.On<List<Conversation>>("LoadConversations", (conversations) =>
+            {
+                ConversationLoad?.Invoke(conversations);
+            });
         }
 
+        /// <summary>
+        /// 连接到 SignalR Hub
+        /// </summary>
+        /// <returns></returns>
         public async Task ConnectAsync()
         {
             if (_hubConnection.State != HubConnectionState.Connected)
                 await _hubConnection.StartAsync();
         }
 
+        /// <summary>
+        /// 发送消息到 SignalR Hub
+        /// </summary>
+        /// <param name="userId"></param>
+        /// <param name="userName"></param>
+        /// <param name="message"></param>
+        /// <returns></returns>
         public async Task SendMessageAsync(int userId, string userName, string message)
         {
             await _hubConnection.InvokeAsync("SendMessage", userId, userName, message);
+        }
+
+        /// <summary>
+        /// 注册用户到 SignalR Hub
+        /// </summary>
+        /// <param name="senderId"></param>
+        /// <param name="receiverId"></param>
+        /// <param name="senderName"></param>
+        /// <param name="userId"></param>
+        /// <returns></returns>
+        public async Task RegisterAsync(int userId)
+        {
+            await _hubConnection.InvokeAsync("RegisterUser", userId);
+        }
+
+        /// <summary>
+        /// 发送私聊消息到 SignalR Hub
+        /// </summary>
+        /// <param name="senderId"></param>
+        /// <param name="receiverId"></param>
+        /// <param name="senderName"></param>
+        /// <param name="message"></param>
+        /// <returns></returns>
+        public async Task SendPrivateMessageAsync(int senderId, int receiverId, string senderName, string message)
+        {
+            await _hubConnection.InvokeAsync("SendPrivateMessage", senderId, receiverId, senderName, message);
         }
     }
 }

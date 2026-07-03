@@ -1,6 +1,7 @@
 using ChatRoom.Client.Models;
 using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 
 namespace ChatRoom.Client.Interfaces
 {
@@ -10,9 +11,15 @@ namespace ChatRoom.Client.Interfaces
         event Action<ChatMessage> MessageReceived;
         // 接收历史消息事件
         event Action<List<ChatMessage>> HistoryMessagesLoad;
+        // 会话加载事件
+        event Action<List<Conversation>> ConversationLoad;
         // 连接服务器
         Task ConnectAsync();
+        // 用户上线注册
+        Task RegisterAsync(int userId);
         // 发送消息
         Task SendMessageAsync(int userId, string userName, string message);
+        // 发送私聊消息
+        Task SendPrivateMessageAsync(int senderId, int receiverId, string senderName, string message);
     }
 }

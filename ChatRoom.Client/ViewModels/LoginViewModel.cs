@@ -44,7 +44,7 @@ namespace ChatRoom.Client.ViewModels
                 ErrorMessage = msg;
             });
 
-            // 登录命令
+            // 登录
             LoginCommand = new DelegateCommand<PasswordBox>(async (passwordBox) =>
             {
                 if (string.IsNullOrWhiteSpace(UserName) || passwordBox.Password.Length == 0)
@@ -66,7 +66,8 @@ namespace ChatRoom.Client.ViewModels
                     var data = result.GetProperty("data");
                     var userId = data.GetProperty("userId").GetInt32();
                     var userName = data.GetProperty("userName").GetString();
-                    _navigation.NavigateToChat(userId, userName);
+                     //_navigation.NavigateToChat(userId, userName);
+                    _navigation.NavigateToMainView(userId, userName);
                 }
                 else
                 {

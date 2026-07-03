@@ -1,8 +1,9 @@
-using System.Windows;
 using ChatRoom.Client.Interfaces;
 using ChatRoom.Client.Services;
+using ChatRoom.Client.ViewModels;
 using ChatRoom.Client.Views;
 using Prism.Ioc;
+using System.Windows;
 
 namespace ChatRoom.Client
 {
@@ -17,6 +18,7 @@ namespace ChatRoom.Client
         {
             containerRegistry.RegisterSingleton<IChatService, ChatService>();
             containerRegistry.RegisterSingleton<INavigationService, NavigationService>();
+            containerRegistry.RegisterDialog<AddFriendDialog, AddFirendDialogViewModel>();
         }
     }
 }

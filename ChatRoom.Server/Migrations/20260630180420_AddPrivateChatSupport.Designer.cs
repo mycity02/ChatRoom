@@ -4,6 +4,7 @@ using ChatRoom.Server.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace ChatRoom.Server.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260630180420_AddPrivateChatSupport")]
+    partial class AddPrivateChatSupport
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -37,13 +40,10 @@ namespace ChatRoom.Server.Migrations
                     b.Property<long?>("ConversationId")
                         .HasColumnType("bigint");
 
-                    b.Property<int?>("ReceivedId")
-                        .HasColumnType("int");
-
                     b.Property<DateTime>("SendTime")
                         .HasColumnType("datetime(6)");
 
-                    b.Property<int>("SenderId")
+                    b.Property<int?>("SenderId")
                         .HasColumnType("int");
 
                     b.Property<string>("UserName")
@@ -54,11 +54,29 @@ namespace ChatRoom.Server.Migrations
 
                     b.HasIndex("ConversationId");
 
-                    b.HasIndex("ReceivedId");
-
                     b.HasIndex("SenderId");
 
                     b.ToTable("ChatMessages");
+                });
+
+            modelBuilder.Entity("ChatRoom.Server.Models.Conversation", b =>
+                {
+                    b.Property<long>("ConversationId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<long>("ConversationId"));
+
+                    b.Property<DateTime>("CreateTime")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.HasKey("ConversationId");
+
+                    b.ToTable("Conversations");
                 });
 
             modelBuilder.Entity("ChatRoom.Server.Models.FriendShip", b =>
@@ -91,32 +109,6 @@ namespace ChatRoom.Server.Migrations
                     b.ToTable("Friendships");
                 });
 
-            modelBuilder.Entity("ChatRoom.Server.Models.PrivateConversation", b =>
-                {
-                    b.Property<long>("ConversationId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<long>("ConversationId"));
-
-                    b.Property<DateTime>("CreateTime")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<int>("User1Id")
-                        .HasColumnType("int");
-
-                    b.Property<int>("User2Id")
-                        .HasColumnType("int");
-
-                    b.HasKey("ConversationId");
-
-                    b.HasIndex("User1Id");
-
-                    b.HasIndex("User2Id");
-
-                    b.ToTable("PrivateConversations");
-                });
-
             modelBuilder.Entity("ChatRoom.Server.Models.User", b =>
                 {
                     b.Property<int>("Id")
@@ -140,23 +132,15 @@ namespace ChatRoom.Server.Migrations
 
             modelBuilder.Entity("ChatRoom.Server.Models.ChatMessage", b =>
                 {
-                    b.HasOne("ChatRoom.Server.Models.PrivateConversation", "PrivateConversation")
-                        .WithMany("ChatMessages")
-                        .HasForeignKey("ConversationId");
-
-                    b.HasOne("ChatRoom.Server.Models.User", "Receiver")
+                    b.HasOne("ChatRoom.Server.Models.Conversation", "Conversation")
                         .WithMany()
-                        .HasForeignKey("ReceivedId");
+                        .HasForeignKey("ConversationId");
 
                     b.HasOne("ChatRoom.Server.Models.User", "Sender")
                         .WithMany()
-                        .HasForeignKey("SenderId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .HasForeignKey("SenderId");
 
-                    b.Navigation("PrivateConversation");
-
-                    b.Navigation("Receiver");
+                    b.Navigation("Conversation");
 
                     b.Navigation("Sender");
                 });
@@ -178,30 +162,6 @@ namespace ChatRoom.Server.Migrations
                     b.Navigation("Receiver");
 
                     b.Navigation("Requester");
-                });
-
-            modelBuilder.Entity("ChatRoom.Server.Models.PrivateConversation", b =>
-                {
-                    b.HasOne("ChatRoom.Server.Models.User", "User1")
-                        .WithMany()
-                        .HasForeignKey("User1Id")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("ChatRoom.Server.Models.User", "User2")
-                        .WithMany()
-                        .HasForeignKey("User2Id")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("User1");
-
-                    b.Navigation("User2");
-                });
-
-            modelBuilder.Entity("ChatRoom.Server.Models.PrivateConversation", b =>
-                {
-                    b.Navigation("ChatMessages");
                 });
 #pragma warning restore 612, 618
         }

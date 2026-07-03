@@ -2,21 +2,144 @@ using ChatRoom.Server.Data;
 using ChatRoom.Server.Models;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
+using System.Collections.Concurrent;
 
 namespace ChatRoom.Server.Hubs
 {
     public class ChatHub : Hub
     {
         private readonly AppDbContext _dbContext;
+        private static readonly ConcurrentDictionary<int, string> UserConnection = new();
 
         public ChatHub(AppDbContext dbContext)
         {
             _dbContext = dbContext;
         }
 
+        /// <summary>
+        /// ×¢²áÓÃ»§Á¬½Ó£¬½«ÓÃ»§IDÓëÁ¬½ÓID¹ØÁª£¬²¢¼ÓÔØ¸ÃÓÃ»§µÄ»á»°ÁĞ±í¡£
+        /// </summary>
+        /// <param name="userId"></param>
+        /// <returns></returns>
+        public async Task RegisterUser(int userId)
+        {
+            // ½«ÓÃ»§IDÓëµ±Ç°Á¬½ÓID¹ØÁª
+            UserConnection[userId] = Context.ConnectionId;
+            // ¼ÓÔØ¸ÃÓÃ»§µÄ»á»°ÁĞ±í
+            await LoadConversation(userId);
+        }
+
+        /// <summary>
+        /// ¼ÓÔØÖ¸¶¨ÓÃ»§µÄ»á»°ÁĞ±í£¬°üÀ¨ÓëÆäËûÓÃ»§µÄË½ÁÄ»á»°¼°×îºóÒ»ÌõÏûÏ¢¡£
+        /// </summary>
+        /// <param name="userId"></param>
+        /// <returns></returns>
+        private async Task LoadConversation(int userId)
+        {
+            var conversationList = await _dbContext.PrivateConversations
+                .Where(c => c.User1Id == userId || c.User2Id == userId)
+                .Select(c => new
+                {
+                    // »ñÈ¡»á»°ID¡¢¶Ô·½ÓÃ»§ID¡¢¶Ô·½ÓÃ»§Ãû¡¢×îºóÒ»ÌõÏûÏ¢¼°Æä·¢ËÍÊ±¼ä
+                    c.ConversationId,
+                    OtherUserId = c.User1Id == userId ? c.User2Id : c.User1Id,
+                    OtherUserName = c.User1Id == userId
+                        ? (c.User2 != null ? c.User2.UserName : string.Empty)
+                        : (c.User1 != null ? c.User1.UserName : string.Empty),
+                    LastMessage = c.ChatMessages
+                        .OrderByDescending(m => m.SendTime)
+                        .Select(m => m.Content)
+                        .FirstOrDefault() ?? string.Empty,
+                    LastMessageTime = c.ChatMessages
+                        .OrderByDescending(m => m.SendTime)
+                        .Select(m => m.SendTime)
+                        .FirstOrDefault()
+                })
+                .OrderByDescending(c => c.LastMessageTime)
+                .ToListAsync();
+
+           
+            if (UserConnection.TryGetValue(userId, out var connectionId))
+            {
+                await Clients.Client(connectionId).SendAsync("LoadConversations", conversationList);
+            }
+        }
+
+        /// <summary>
+        /// ·¢ËÍË½ÁÄÏûÏ¢£¬Ê×ÏÈ»ñÈ¡»ò´´½¨Ë½ÁÄ»á»°£¬È»ºó±£´æÏûÏ¢²¢Í¨Öª·¢ËÍÕßºÍ½ÓÊÕÕß¡£
+        /// </summary>
+        /// <param name="senderId"></param>
+        /// <param name="receiverId"></param>
+        /// <param name="senderName"></param>
+        /// <param name="message"></param>
+        /// <returns></returns>
+        public async Task SendPrivateMessage(int senderId, int receiverId, string senderName, string message)
+        {
+            var conversation = await GetOrCreatePrivateConversationAsync(senderId, receiverId);
+
+            var chatMessage = new ChatMessage
+            {
+                SenderId = senderId,
+                ReceivedId = receiverId,
+                UserName = senderName,
+                Content = message,
+                ConversationId = conversation.ConversationId,
+                SendTime = DateTime.Now
+            };
+
+            _dbContext.ChatMessages.Add(chatMessage);
+            await _dbContext.SaveChangesAsync();
+
+            // 1. ·¢¸ø×Ô¼º£¬ÈÃ×Ô¼ºµÄ´°¿ÚÏÔÊ¾¸Õ·¢³öµÄÏûÏ¢
+            await Clients.Caller.SendAsync("ReceivePrivateMessage", chatMessage);
+
+            // 2.Èç¹û½ÓÊÕÕßÔÚÏß£¬Ôò·¢ËÍÏûÏ¢¸ø½ÓÊÕÕß
+            if (UserConnection.TryGetValue(receiverId, out var receiverConnectionId))
+            {
+                await Clients.Client(receiverConnectionId).SendAsync("ReceivePrivateMessage", chatMessage);
+                await LoadConversation(receiverId);
+            }
+
+            await LoadConversation(senderId);
+        }
+
+        /// <summary>
+        /// »ñÈ¡»ò´´½¨Ë½ÁÄ»á»°£¬Èç¹ûÖ¸¶¨µÄÁ½¸öÓÃ»§Ö®¼äÒÑ¾­´æÔÚ»á»°£¬Ôò·µ»Ø¸Ã»á»°£»·ñÔò´´½¨Ò»¸öĞÂµÄ»á»°²¢·µ»Ø¡£
+        /// </summary>
+        /// <param name="senderId"></param>
+        /// <param name="receiverId"></param>
+        /// <returns></returns>
+        private async Task<PrivateConversation> GetOrCreatePrivateConversationAsync(int senderId, int receiverId)
+        {
+            var conversation = await _dbContext.PrivateConversations
+                .FirstOrDefaultAsync(c =>
+                    (c.User1Id == senderId && c.User2Id == receiverId) ||
+                    (c.User1Id == receiverId && c.User2Id == senderId));
+
+            if (conversation != null)
+                return conversation;
+
+            conversation = new PrivateConversation
+            {
+                User1Id = senderId,
+                User2Id = receiverId,
+                CreateTime = DateTime.Now
+            };
+
+            _dbContext.PrivateConversations.Add(conversation);
+            await _dbContext.SaveChangesAsync();
+            return conversation;
+        }
+
+        /// <summary>
+        /// ·¢ËÍÈºÁÄÏûÏ¢£¬½«ÏûÏ¢±£´æµ½Êı¾İ¿â²¢¹ã²¥¸øËùÓĞÁ¬½ÓµÄ¿Í»§¶Ë¡£
+        /// </summary>
+        /// <param name="userId"></param>
+        /// <param name="userName"></param>
+        /// <param name="message"></param>
+        /// <returns></returns>
         public async Task SendMessage(int userId, string userName, string message)
         {
-            // å°†æ¶ˆæ¯ä¿å­˜åˆ°æ•°æ®åº“
             var chatMessage = new ChatMessage
             {
                 SenderId = userId,
@@ -24,30 +147,42 @@ namespace ChatRoom.Server.Hubs
                 Content = message,
                 SendTime = DateTime.Now
             };
+
             _dbContext.ChatMessages.Add(chatMessage);
             await _dbContext.SaveChangesAsync();
-
-            // å¹¿æ’­æ¶ˆæ¯ç»™æ‰€æœ‰è¿æ¥çš„å®¢æˆ·ç«¯
             await Clients.All.SendAsync("ReceiveMessage", userName, message);
         }
 
         /// <summary>
-        /// å½“å®¢æˆ·ç«¯è¿æ¥åˆ°Hubæ—¶è§¦å‘
+        /// ÔÚ¿Í»§¶ËÁ¬½Óµ½HubÊ±£¬¼ÓÔØ×î½üµÄ50ÌõÈºÁÄÏûÏ¢²¢·¢ËÍ¸øµ÷ÓÃÕß¡£
         /// </summary>
-        public override async Task OnConnectedAsync()
+        /// <returns></returns>
+        //public override async Task OnConnectedAsync()
+        //{
+        //    var recentMessages = await _dbContext.ChatMessages
+        //        .Where(m => m.ReceivedId == null)
+        //        .OrderByDescending(m => m.SendTime)
+        //        .Take(50)
+        //        .OrderBy(m => m.SendTime)
+        //        .ToListAsync();
+
+        //    await Clients.Caller.SendAsync("LoadHistory", recentMessages);
+        //    await base.OnConnectedAsync();
+        //}
+
+        /// <summary>
+        /// ÔÚ¿Í»§¶Ë¶Ï¿ªÁ¬½ÓÊ±£¬´ÓUserConnection×ÖµäÖĞÒÆ³ı¸ÃÁ¬½ÓID¶ÔÓ¦µÄÓÃ»§ID¡£
+        /// </summary>
+        /// <param name="exception"></param>
+        /// <returns></returns>
+        public override Task OnDisconnectedAsync(Exception? exception)
         {
-            // è·å–æœ€è¿‘50æ¡æ¶ˆæ¯
-            var recentMessages = await _dbContext.ChatMessages
-                .OrderByDescending(m => m.SendTime)
-                .Take(50)
-                .OrderBy(m => m.SendTime)
-                .ToListAsync();
+            foreach (var pair in UserConnection.Where(pair => pair.Value == Context.ConnectionId).ToList())
+            {
+                UserConnection.TryRemove(pair.Key, out _);
+            }
 
-            // å°†æœ€è¿‘çš„æ¶ˆæ¯å‘é€ç»™è¿æ¥çš„å®¢æˆ·ç«¯
-            await Clients.Caller.SendAsync("LoadHistory", recentMessages);
-
-            // è°ƒç”¨åŸºç±»çš„OnConnectedAsyncæ–¹æ³•
-            await base.OnConnectedAsync();
+            return base.OnDisconnectedAsync(exception);
         }
     }
 }
