@@ -90,13 +90,23 @@ namespace ChatRoom.Server.Hubs
             _dbContext.ChatMessages.Add(chatMessage);
             await _dbContext.SaveChangesAsync();
 
+            var messageDto = new
+            {
+                SenderId = chatMessage.SenderId,
+                ReceivedId = chatMessage.ReceivedId,
+                UserName = chatMessage.UserName,
+                Content = chatMessage.Content,
+                ConversationId = chatMessage.ConversationId,
+                SendTime = chatMessage.SendTime
+            };
+
             // 1. 发给自己，让自己的窗口显示刚发出的消息
-            await Clients.Caller.SendAsync("ReceivePrivateMessage", chatMessage);
+            await Clients.Caller.SendAsync("ReceivePrivateMessage", messageDto);
 
             // 2.如果接收者在线，则发送消息给接收者
             if (UserConnection.TryGetValue(receiverId, out var receiverConnectionId))
             {
-                await Clients.Client(receiverConnectionId).SendAsync("ReceivePrivateMessage", chatMessage);
+                await Clients.Client(receiverConnectionId).SendAsync("ReceivePrivateMessage", messageDto);
                 await LoadConversation(receiverId);
             }
 

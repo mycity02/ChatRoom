@@ -2,6 +2,9 @@
 using System.Collections.Generic;
 using System.Security.Permissions;
 using System.Text;
+using Prism.Dialogs;
+using Prism.Commands;
+using Prism.Mvvm;
 
 namespace ChatRoom.Client.ViewModels
 {
@@ -66,3 +69,4 @@ namespace ChatRoom.Client.ViewModels
         }
     }
 }
+

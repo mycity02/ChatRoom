@@ -17,6 +17,7 @@ builder.Services.AddSignalR();
 
 // 注册自定义服务
 builder.Services.AddScoped<IAuthService,AuthService>();
+builder.Services.AddScoped<IFriendService, FriendService>();
 
 // 注册 EF Core + MySQL
 builder.Services.AddDbContext<AppDbContext>(options =>

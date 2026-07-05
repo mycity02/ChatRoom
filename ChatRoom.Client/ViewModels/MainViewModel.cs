@@ -1,9 +1,9 @@
 ﻿using ChatRoom.Client.Interfaces;
 using ChatRoom.Client.Models;
-using System;
-using System.Collections.Generic;
+using Prism.Commands;
+using Prism.Mvvm;
+using Prism.Dialogs;
 using System.Collections.ObjectModel;
-using System.Text;
 using System.Windows;
 
 namespace ChatRoom.Client.ViewModels
@@ -11,6 +11,7 @@ namespace ChatRoom.Client.ViewModels
     public class MainViewModel : BindableBase
     {
         private readonly IChatService _chatService;
+        private readonly IFriendService _friendService;
         private readonly IDialogService _dialogService;
 
         public int ConversationId { get; set; }
@@ -32,24 +33,31 @@ namespace ChatRoom.Client.ViewModels
         /// 初始化 MainViewModel 的构造函数
         /// </summary>
         /// <param name="chatService"></param>
+        /// <param name="friendService"></param>
+        /// <param name="dialogService"></param>
         /// <param name="userId"></param>
         /// <param name="userName"></param>
-        public MainViewModel(IChatService chatService, 
-                            IDialogService dialogService,
-                            int userId, string userName)
+        public MainViewModel(
+            IChatService chatService,
+            IFriendService friendService,
+            IDialogService dialogService,
+            int userId,
+            string userName)
         {
             _chatService = chatService;
+            _friendService = friendService;
             _dialogService = dialogService;
             CurrentUserId = userId;
             CurrentUserName = userName;
+
+            AddFriendCommand = new DelegateCommand(AddFriend);
+
             // 订阅聊天服务的事件
             _chatService.MessageReceived += OnMessageReceived;
             // 订阅会话加载事件
             _chatService.ConversationLoad += OnConversationLoad;
             // 初始化 连接服务器并注册当前用户
             InitializeAsync();
-
-            AddFriendCommand = new DelegateCommand(AddFriend);
         }
 
         /// <summary>
@@ -57,16 +65,45 @@ namespace ChatRoom.Client.ViewModels
         /// </summary>
         private void AddFriend()
         {
-            _dialogService.ShowDialog("AddFriendDialog", result =>
+            _dialogService.ShowDialog("AddFriendDialog", async result =>
             {
                 if (result.Result != ButtonResult.OK)
                     return;
-                var findUserName = result.Parameters.GetValue<string>("FindUserName");
 
-                if (string.IsNullOrWhiteSpace(findUserName))
-                    return; 
+                var friendName = result.Parameters.GetValue<string>("friendName");
 
-                MessageBox.Show($"添加好友: {findUserName} 成功");
+                if (string.IsNullOrWhiteSpace(friendName))
+                    return;
+
+                var conversation = await _friendService.AddFriendAsync(CurrentUserId, friendName);
+
+                if (conversation == null)
+                {
+                    MessageBox.Show("添加好友失败");
+                    return;
+                }
+
+                var exists = PrivateSessionCollection
+                    .FirstOrDefault(s => s.OtherUserId == conversation.OtherUserId);
+
+                if (exists != null)
+                {
+                    SelectedSession = exists;
+                    return;
+                }
+
+                var session = new PrivateSession(
+                    CurrentUserId,
+                    CurrentUserName,
+                    conversation.OtherUserId,
+                    conversation.OtherUserName,
+                    _chatService);
+
+                session.LastMessage = conversation.LastMessage;
+                session.LastMessageTime = conversation.LastMessageTime;
+
+                PrivateSessionCollection.Add(session);
+                SelectedSession = session;
             });
         }
 
@@ -113,25 +150,58 @@ namespace ChatRoom.Client.ViewModels
         {
             Application.Current.Dispatcher.Invoke(() =>
             {
-                // 清空现有的会话集合
-                PrivateSessionCollection.Clear();
+                // 对方id
+                var selectedOtherUserId = SelectedSession?.OtherUserId;
 
                 foreach (var conversation in conversations)
                 {
-                    var session = new PrivateSession
-                    (
-                        CurrentUserId,
-                        CurrentUserName,
-                        conversation.OtherUserId,
-                        conversation.OtherUserName,
-                        _chatService
-                    );
+                    // 查询是否已经存在会话
+                    var session = PrivateSessionCollection
+                    .FirstOrDefault(session => session.OtherUserId == conversation.OtherUserId);
+
+                    // 如果不存在就创建
+                    if (session == null)
+                    {
+                        session = new PrivateSession(
+                            CurrentUserId,
+                            CurrentUserName,
+                            conversation.OtherUserId,
+                            conversation.OtherUserName,
+                            _chatService);
+
+                        PrivateSessionCollection.Add(session);
+                    }
+
                     session.LastMessage = conversation.LastMessage;
                     session.LastMessageTime = conversation.LastMessageTime;
-
-                    PrivateSessionCollection.Add(session);
                 }
-                SelectedSession ??= PrivateSessionCollection.FirstOrDefault();
+                
+
+                // 移除不再存在的会话
+                var removeList = PrivateSessionCollection
+                    .Where(s => !conversations.Any(c => c.OtherUserId == s.OtherUserId))
+                    .ToList();
+
+                foreach (var session in removeList)
+                {
+                    PrivateSessionCollection.Remove(session);
+                }
+
+                // 如果刷新前用户已经选中了某个会话，
+                // 那刷新后就在新的 PrivateSessionCollection 里，
+                //  重新找回这个会话，并继续选中它。
+                if (selectedOtherUserId != null)
+                {
+                    SelectedSession = PrivateSessionCollection
+                    .FirstOrDefault(session => session.OtherUserId == selectedOtherUserId.Value);
+                }
+
+                // 如果当前没有选中的会话，
+                // 就默认选中会话列表里的第一个会话。
+                if (SelectedSession == null)
+                {
+                    SelectedSession = PrivateSessionCollection.FirstOrDefault();
+                }
             });
         }
     }
