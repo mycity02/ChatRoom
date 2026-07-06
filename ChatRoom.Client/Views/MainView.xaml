@@ -31,7 +31,7 @@
                     <Button Content="创建群聊" Width="80" Height="26" Margin="0,0,8,0"
                             FontSize="12"/>
                     <Button Content="添加好友" Width="80" Height="26" Margin="0,0,8,0"
-                            FontSize="12" Command="{Binding AddFriendCommand}"/>
+                            FontSize="12" Command="{Binding FriendPanel.AddFriendRequestCommand}"/>
                     <Button Content="退出" Width="60" Height="26" FontSize="12"/>
                 </StackPanel>
             </Grid>
@@ -45,50 +45,180 @@
             </Grid.ColumnDefinitions>
             
             <!-- 左侧会话列表 -->
-            <Border Grid.Column="0" BorderBrush="#E0E0E0" BorderThickness="0,0,1,0"
-                    Background="#FAFAFA">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="*"/>
-                    </Grid.RowDefinitions>
+            <Border Grid.Column="0" BorderBrush="#E0E0E0"
+                    BorderThickness="0,0,1,0" Background="#FAFAFA">
 
-                    <Border Grid.Row="0" Padding="12,8" BorderBrush="#E0E0E0"
-                            BorderThickness="0,0,0,1">
-                        <TextBlock Text="我的会话" FontWeight="Bold" FontSize="14"/>
-                    </Border>
+                <TabControl BorderThickness="0"
+                            Background="Transparent">
+                    
+                    <!-- 会话Tab -->
+                    <TabItem Header="会话">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
 
-                    <ListBox Grid.Row="1"
-                             ItemsSource="{Binding PrivateSessionCollection}"
-                             SelectedItem="{Binding SelectedSession}"
-                             BorderThickness="0" Background="Transparent">
-                        <ListBox.ItemTemplate>
-                            <DataTemplate>
-                                <Border Padding="10,8" Background="Transparent">
-                                    <StackPanel Orientation="Horizontal">
-                                        <Border Width="32" Height="32"
-                                                CornerRadius="16" Background="#2196F3"
-                                                Margin="0,0,10,0">
-                                            <TextBlock Text="{Binding Icon}"
-                                                       Foreground="White" FontSize="14"
-                                                       FontWeight="Bold"
-                                                       HorizontalAlignment="Center"
-                                                       VerticalAlignment="Center"/>
+                            <Border Grid.Row="0" Padding="12,8"
+                                    BorderBrush="#E0E0E0" BorderThickness="0,0,0,1">
+                                <TextBlock Text="我的会话"
+                                           FontWeight="Bold"
+                                           FontSize="14"/>
+                            </Border>
+
+                            <ListBox Grid.Row="1"
+                                     ItemsSource="{Binding PrivateSessionCollection}"
+                                     SelectedItem="{Binding SelectedSession}"
+                                     BorderThickness="0" Background="Transparent">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Padding="10,8" Background="Transparent">
+                                            <StackPanel Orientation="Horizontal">
+                                                <Border Width="32" Height="32"
+                                                        CornerRadius="16"
+                                                        Background="#2196F3"
+                                                        Margin="0,0,10,0">
+                                                    <TextBlock Text="{Binding Icon}"
+                                                               Foreground="White"
+                                                               FontSize="14" FontWeight="Bold"
+                                                               HorizontalAlignment="Center"
+                                                               VerticalAlignment="Center"/>
+                                                </Border>
+
+                                                <StackPanel>
+                                                    <TextBlock Text="{Binding OtherUserName}"
+                                                   FontWeight="Bold"
+                                                   FontSize="13"
+                                                   Foreground="#333"/>
+
+                                                    <TextBlock Text="{Binding LastMessage}"
+                                                   FontSize="12"
+                                                   Foreground="#999"
+                                                   Margin="0,4,0,0"
+                                                   TextTrimming="CharacterEllipsis"/>
+                                                </StackPanel>
+                                            </StackPanel> 
                                         </Border>
-                                        <StackPanel>
-                                            <TextBlock Text="{Binding OtherUserName}" 
-                                                       FontWeight="Bold" FontSize="13" 
-                                                       Foreground="#333"/>
-                                            <TextBlock Text="{Binding LastMessage}" 
-                                                       FontSize="12" Foreground="#999" 
-                                                       Margin="0,4,0,0" TextTrimming="CharacterEllipsis"/>
-                                        </StackPanel>
-                                    </StackPanel>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </Grid>
+                    </TabItem>
+                    
+                    <!-- 好友Tab -->
+                    <TabItem Header="好友">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+                            
+                            <!-- 收到的好友申请区域 -->
+                            <Expander Grid.Row="0" Header="收到的申请"
+                                      IsExpanded="True" MaxHeight="100">
+                                <ListBox ItemsSource="{Binding FriendPanel.FriendRequestCollection}"
+                                         BorderThickness="0">
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Padding="10,8">
+                                                <StackPanel>
+                                                    <TextBlock Text="{Binding RequestUserName}"
+                                                               FontWeight="Bold" FontSize="13"/>
+                                                    <TextBlock Text="{Binding CreateTime, StringFormat=yyyy-MM-dd HH:mm}"
+                                                               FontSize="11"
+                                                               Foreground="#999"
+                                                               Margin="0,4,0,0"/>
+
+                                                    <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                                                        <Button Content="同意" Width="52" Height="24"
+                                                                Margin="0,0,8,0" FontSize="12"
+                                                                Command="{Binding DataContext.FriendPanel.AcceptFriendRequestCommand,
+                                                                            RelativeSource={RelativeSource AncestorType=ListBox}}"
+                                                                CommandParameter="{Binding}"/>
+                                                        <Button Content="拒绝" Width="52" Height="24"
+                                                                FontSize="12"
+                                                                Command="{Binding DataContext.FriendPanel.RejectFriendRequestCommand,
+                                                                            RelativeSource={RelativeSource AncestorType=ListBox}}"
+                                                                CommandParameter="{Binding}"/>
+                                                    </StackPanel>
+                                                </StackPanel>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                            </Expander>
+
+                            <!-- 发出的好友申请区域 -->
+                            <Expander Grid.Row="1" Header="发出的申请"
+                                      IsExpanded="True" MaxHeight="120">
+                                <ListBox ItemsSource="{Binding FriendPanel.SentFriendRequestCollection}"
+                                         BorderThickness="0">
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Padding="10,8">
+                                                <StackPanel>
+                                                    <!-- ReceivedUserName 是我申请添加的用户 -->
+                                                    <TextBlock Text="{Binding ReceivedUserName}"
+                                                               FontWeight="Bold" FontSize="13"/>
+
+                                                    <!-- Status 是这条申请当前状态：pending / accepted / rejected -->
+                                                    <TextBlock Text="{Binding Status}"
+                                                               FontSize="12"
+                                                               Foreground="#2196F3"
+                                                               Margin="0,4,0,0"/>
+
+                                                    <TextBlock Text="{Binding CreateTime, StringFormat=yyyy-MM-dd HH:mm}"
+                                                               FontSize="11"
+                                                               Foreground="#999"
+                                                               Margin="0,4,0,0"/>
+                                                </StackPanel>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                            </Expander>
+
+                            <Grid Grid.Row="2">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                </Grid.RowDefinitions>
+
+                                <Border Grid.Row="0" Padding="12,8"
+                                        BorderBrush="#E0E0E0" BorderThickness="0,1,0,1">
+                                    <TextBlock Text="好友列表" FontWeight="Bold" FontSize="14"/>
                                 </Border>
-                            </DataTemplate>
-                        </ListBox.ItemTemplate>
-                    </ListBox>
-                </Grid>
+
+                                <ListBox Grid.Row="1" ItemsSource="{Binding FriendPanel.FriendCollection}"
+                                         BorderThickness="0" Background="Transparent">
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Padding="10,8">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <Border Width="32" Height="32"
+                                                            CornerRadius="16" Background="#4CAF50"
+                                                            Margin="0,0,10,0">
+                                                        <TextBlock Text="{Binding UserName}" 
+                                                                   Foreground="White" FontSize="14"
+                                                                   FontWeight="Bold" 
+                                                                   HorizontalAlignment="Center"
+                                                                   VerticalAlignment="Center"/>
+                                                    </Border>
+
+                                                    <TextBlock Text="{Binding UserName}"
+                                                               FontWeight="Bold"
+                                                               FontSize="13"
+                                                               VerticalAlignment="Center"/>
+                                                </StackPanel>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                            </Grid>
+                        </Grid>
+                    </TabItem>
+                </TabControl>
             </Border>
 
             <Grid Grid.Column="1">
@@ -200,3 +330,7 @@
         </Grid>
     </Grid>
 </Window>
+
+
+
+

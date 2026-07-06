@@ -16,6 +16,7 @@ namespace ChatRoom.Client
 
         protected override void RegisterTypes(IContainerRegistry containerRegistry)
         {
+            containerRegistry.RegisterSingleton<IHubCallbackService, HubCallbackService>();
             containerRegistry.RegisterSingleton<IChatService, ChatService>();
             containerRegistry.RegisterSingleton<IFriendService, FriendService>();
             containerRegistry.RegisterSingleton<INavigationService, NavigationService>();
@@ -24,3 +25,7 @@ namespace ChatRoom.Client
         }
     }
 }
+
+
+
+

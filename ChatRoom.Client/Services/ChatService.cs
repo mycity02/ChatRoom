@@ -1,3 +1,4 @@
+﻿using ChatRoom.Client.Dto;
 using ChatRoom.Client.Interfaces;
 using ChatRoom.Client.Models;
 using Microsoft.AspNetCore.SignalR.Client;
@@ -9,48 +10,32 @@ namespace ChatRoom.Client.Services
     public class ChatService : IChatService
     {
         private readonly HubConnection _hubConnection;
+        private readonly IHubCallbackService _hubCallbackService;
+
         public event Action<ChatMessage> MessageReceived;
         public event Action<List<ChatMessage>> HistoryMessagesLoad;
-        public event Action<List<Conversation>> ConversationLoad;
+        public event Action<List<ConversationDto>> ConversationLoad;
 
-        public ChatService()
+        public ChatService(IHubCallbackService hubCallbackService)
         {
+            _hubCallbackService = hubCallbackService;
+
             _hubConnection = new HubConnectionBuilder()
                 .WithUrl("http://localhost:5000/chatHub")
                 .Build();
 
-            // 订阅接收消息事件
-            _hubConnection.On<string, string>("ReceiveMessage", (userName, content) =>
-            {
-                MessageReceived?.Invoke(new ChatMessage
-                {
-                    UserName = userName,
-                    Content = content,
-                    SendTime = DateTime.Now,
-                });
-            });
+            // ChatService 只转发聊天和会话相关事件。
+            // 好友相关 SignalR 回调由 FriendPanelViewModel 直接订阅 HubCallbackService。
+            _hubCallbackService.MessageReceived += chatMessage => MessageReceived?.Invoke(chatMessage);
+            _hubCallbackService.HistoryMessagesLoad += messages => HistoryMessagesLoad?.Invoke(messages);
+            _hubCallbackService.ConversationLoad += conversations => ConversationLoad?.Invoke(conversations);
 
-            // 订阅接收历史消息事件
-            _hubConnection.On<List<ChatMessage>>("LoadHistory", (messages) =>
-            {
-                HistoryMessagesLoad?.Invoke(messages);
-            });
-
-            // 一对一聊天接收消息事件
-            _hubConnection.On<ChatMessage> ("ReceivePrivateMessage", (chatMessage) =>
-            {
-                MessageReceived?.Invoke(chatMessage);
-            });
-
-            // 会话列表加载
-            _hubConnection.On<List<Conversation>>("LoadConversations", (conversations) =>
-            {
-                ConversationLoad?.Invoke(conversations);
-            });
+            // 所有 _hubConnection.On(...) 都集中放在 HubCallbackService 里注册。
+            _hubCallbackService.RegisterCallbacks(_hubConnection);
         }
 
         /// <summary>
-        /// 连接到 SignalR Hub
+        /// 连接到 SignalR Hub。
         /// </summary>
         /// <returns></returns>
         public async Task ConnectAsync()
@@ -60,7 +45,7 @@ namespace ChatRoom.Client.Services
         }
 
         /// <summary>
-        /// 发送消息到 SignalR Hub
+        /// 发送群聊消息到 SignalR Hub。
         /// </summary>
         /// <param name="userId"></param>
         /// <param name="userName"></param>
@@ -72,11 +57,8 @@ namespace ChatRoom.Client.Services
         }
 
         /// <summary>
-        /// 注册用户到 SignalR Hub
+        /// 注册当前用户到 SignalR Hub。
         /// </summary>
-        /// <param name="senderId"></param>
-        /// <param name="receiverId"></param>
-        /// <param name="senderName"></param>
         /// <param name="userId"></param>
         /// <returns></returns>
         public async Task RegisterAsync(int userId)
@@ -85,7 +67,7 @@ namespace ChatRoom.Client.Services
         }
 
         /// <summary>
-        /// 发送私聊消息到 SignalR Hub
+        /// 发送私聊消息到 SignalR Hub。
         /// </summary>
         /// <param name="senderId"></param>
         /// <param name="receiverId"></param>

@@ -1,6 +1,6 @@
 # ChatRoom - 实时聊天室
 
-基于 **ASP.NET Core + SignalR + WPF (Prism MVVM)** 的实时一对一聊天应用。
+基于 **ASP.NET Core + SignalR + WPF (Prism MVVM)** 的一对一实时聊天应用，支持好友申请流程。
 
 ## 技术栈
 
@@ -19,156 +19,170 @@
 
 ```
 ChatRoom/
-├── ChatRoom.Server/                       # 服务端
+├── ChatRoom.Server/                          # 服务端
 │   ├── Controllers/
-│   │   ├── AuthController.cs              # 登录/注册 API
-│   │   └── FriendsController.cs           # 好友/会话 API（添加好友）
+│   │   ├── AuthController.cs                 # 登录/注册 API
+│   │   └── FriendsController.cs              # 好友/会话 API
+│   │       ├── add           直接添加好友（保留旧接口）
+│   │       ├── request       发送好友申请
+│   │       ├── accept        同意好友申请
+│   │       ├── reject        拒绝好友申请
+│   │       ├── received/{id} 我收到的好友申请
+│   │       └── sent/{id}     我发出的好友申请
 │   ├── Hubs/
-│   │   └── ChatHub.cs                     # SignalR 消息中心（私聊 + 会话管理）
-│   ├── Models/
-│   │   ├── User.cs                        # 用户实体
-│   │   ├── ChatMessage.cs                 # 消息实体
-│   │   ├── PrivateConversation.cs         # 私聊会话实体
-│   │   ├── FriendShip.cs                  # 好友关系实体
-│   │   └── Conversation.cs                # 会话返回 DTO（服务端）
-│   ├── Dto/
-│   │   ├── UserDto.cs                     # 用户请求参数
-│   │   ├── FriendDto.cs                   # 添加好友请求参数
-│   │   ├── MessageDto.cs                  # 私聊消息 DTO
-│   │   ├── ApiResult.cs                   # 统一响应格式
-│   │   └── LoginResultData.cs             # 登录响应数据
+│   │   └── ChatHub.cs                        # SignalR 消息中心（私聊 + 会话）
+│   ├── Models/                               # EF Core 实体
+│   │   ├── User.cs
+│   │   ├── ChatMessage.cs
+│   │   ├── PrivateConversation.cs            # 私聊会话
+│   │   └── FriendShip.cs                     # 好友关系（pending / accepted / rejected）
+│   ├── Dto/                                  # 传输对象
+│   │   ├── UserDto.cs / FriendDto.cs         # 请求参数
+│   │   ├── ApiResult.cs / LoginResultData.cs # 认证响应
+│   │   ├── MessageDto.cs                     # 私聊消息 DTO
+│   │   ├── ConversationDto.cs                # 会话 DTO
+│   │   ├── FriendRequestDto.cs               # 好友申请 DTO
+│   │   └── AcceptFriendRequestResultDto.cs   # 同意申请返回结果
 │   ├── Interfaces/
-│   │   ├── IAuthService.cs                # 认证服务接口
-│   │   └── IFriendService.cs              # 好友服务接口
+│   │   ├── IAuthService.cs
+│   │   ├── IFriendService.cs
+│   │   └── IUserConnectionManager.cs         # 用户连接管理抽象
 │   ├── Services/
-│   │   ├── AuthService.cs                 # 认证服务实现
-│   │   └── FriendService.cs               # 好友/会话服务实现
+│   │   ├── AuthService.cs
+│   │   ├── FriendService.cs                  # 好友/会话业务逻辑
+│   │   └── UserConnectionManager.cs          # SignalR 连接管理（ConcurrentDictionary）
 │   ├── Data/
-│   │   └── AppDbContext.cs                # EF Core 数据库上下文
-│   ├── Migrations/                        # 数据库迁移文件
-│   ├── Program.cs                         # 启动入口（注册服务、路由、Hub）
-│   └── appsettings.json                   # 配置文件（连接字符串）
+│   │   └── AppDbContext.cs
+│   ├── Migrations/
+│   ├── Program.cs                            # 入口（DI 注册 + Hub 映射）
+│   └── appsettings.json
 │
-└── ChatRoom.Client/                       # WPF 客户端
+└── ChatRoom.Client/                          # WPF 客户端
     ├── Views/
-    │   ├── LoginView.xaml                 # 登录/注册界面
-    │   ├── MainView.xaml                  # 主界面（会话列表 + 聊天区）
-    │   ├── ChatView.xaml                  # 单聊界面
-    │   └── AddFriendDialog.xaml           # 添加好友弹窗
+    │   ├── LoginView.xaml                    # 登录/注册
+    │   ├── MainView.xaml                     # 主界面（好友面板 + 会话列表 + 聊天区）
+    │   ├── ChatView.xaml
+    │   └── AddFriendDialog.xaml              # 添加好友弹窗
     ├── ViewModels/
-    │   ├── LoginViewModel.cs              # 登录/注册逻辑
-    │   ├── MainViewModel.cs               # 主界面逻辑（会话管理 + 消息接收）
-    │   ├── ChatViewModel.cs               # 聊天逻辑
-    │   └── AddFirendDialogViewModel.cs    # 添加好友弹窗逻辑
+    │   ├── LoginViewModel.cs
+    │   ├── MainViewModel.cs                  # 会话列表管理 + 消息接收
+    │   ├── ChatViewModel.cs
+    │   ├── AddFirendDialogViewModel.cs
+    │   └── FriendPanelViewModel.cs           # 好友申请面板（收到/发出 + 同意/拒绝）
     ├── Models/
-    │   ├── ChatMessage.cs                 # 消息模型
-    │   ├── Session.cs                     # 会话抽象基类
-    │   ├── PrivateSession.cs              # 私聊会话
-    │   └── Conversation.cs                # 会话列表模型
-    ├── Dto/
-    │   └── FriendDto.cs                   # 添加好友请求 DTO（客户端）
+    │   ├── ChatMessage.cs
+    │   ├── Session.cs                        # 会话抽象基类
+    │   ├── PrivateSession.cs                 # 私聊会话
+    │   └── FriendItem.cs                     # 好友列表项
+    ├── Dto/                                  # 传输对象
+    │   ├── FriendDto.cs / FriendRequestDto.cs
+    │   └── ConversationDto.cs
     ├── Services/
-    │   ├── ChatService.cs                 # SignalR 通信服务
-    │   ├── FriendService.cs               # 好友 HTTP 服务
-    │   └── NavigationService.cs           # 页面导航服务
+    │   ├── ChatService.cs                    # SignalR 连接与发送
+    │   ├── HubCallbackService.cs             # SignalR 回调统一注册（拆分自 ChatService）
+    │   ├── FriendService.cs                  # 好友 HTTP 服务
+    │   └── NavigationService.cs
     ├── Interfaces/
-    │   ├── IChatService.cs                # 通信接口
-    │   ├── IFriendService.cs              # 好友服务接口
-    │   └── INavigationService.cs          # 导航接口
-    └── App.xaml.cs                        # Prism 启动配置（DI 注册）
+    │   ├── IChatService.cs
+    │   ├── IFriendService.cs
+    │   ├── IHubCallbackService.cs
+    │   └── INavigationService.cs
+    └── App.xaml.cs                           # Prism DI 容器
 ```
 
-## 功能
+## 核心功能
 
 - ✅ 用户注册/登录（HTTP API + 密码哈希）
-- ✅ 一对一实时私聊（SignalR 双工通信）
-- ✅ 好友系统（按用户名添加好友，自动创建会话）
-- ✅ 自动欢迎语（首次添加好友时双方收到欢迎消息）
-- ✅ 会话列表（自动加载所有私聊会话 + 最后一条消息预览）
-- ✅ 会话切换（保持选中状态、移除已失效会话）
-- ✅ 消息持久化到 MySQL（含发送者/接收者/会话关联）
-- ✅ 消息实时推送（双方同时收到，回显给自己）
-- ✅ 在线连接管理（SignalR UserConnection 字典）
+- ✅ 一对一实时私聊（SignalR）
+- ✅ **好友申请流程**：发起 → 待处理 → 同意/拒绝 → 自动建会话
+- ✅ **好友面板**：显示收到 / 发出的申请，实时推送
+- ✅ 同意申请后自动发送招呼消息
+- ✅ 抽象的 `Session` 基类（便于扩展群聊）
+- ✅ 抽象的 `UserConnectionManager` / `IHubCallbackService`（职责分离）
+- ✅ 消息持久化到 MySQL
+- ✅ 会话列表（按最后消息时间排序）
+- ✅ 收到消息时实时刷新会话列表
 
-## 一对一会话核心流程
-
-### 1. 添加好友并创建会话
-
-```
-客户端                              服务端
-  │                                  │
-  ├─ POST /api/friends/add ─────────>│
-  │   { currentUserId, friendName }   │
-  │                                  ├─ 查找好友用户
-  │                                  ├─ 检查/创建 FriendShip
-  │                                  ├─ 检查/创建 PrivateConversation
-  │                                  ├─ 首次添加：插入欢迎消息
-  │<── 200 OK (Conversation) ────────┤
-  │                                  │
-  ├─ 客户端跳转到该会话 ──────────────>│
-```
-
-### 2. 一对一聊天
+## 好友申请流程
 
 ```
-客户端A                     服务端                      客户端B
-  │                          │                          │
-  ├─ RegisterUser(userId) ──>│                          │
-  │<── LoadConversations ────│  （返回会话列表）          │
-  │                          │                          │
-  ├─ SendPrivateMessage() ──>│                          │
-  │                          ├─ GetOrCreateConversation  │
-  │                          ├─ 保存消息到数据库         │
-  │                          ├─ 推送给自己 (Caller)      │
-  │                          ├─ 推送给对方（如在线）      │
-  │                          ├─ 刷新双方会话列表         │
-  │<── ReceivePrivateMessage ─┤── ReceivePrivateMessage >│
-  │                          │                          │
+用户A                                  服务端                       用户B
+  │                                     │                           │
+  ├─ POST /api/friends/request ───────>│                           │
+  │                                     ├─ 写入 FriendShip(pending) │
+  │                                     ├─ TryGetConnection(B)      │
+  │<── 200 FriendRequestDto ────────────┤── FriendRequestReceived ─>│
+  │                                     │                           │
+  │                                     │<── POST .../accept ───────┤
+  │                                     ├─ Status = accepted        │
+  │                                     ├─ 创建 PrivateConversation │
+  │                                     ├─ 插入招呼消息             │
+  │<── FriendRequestStatusChanged ──────┤── ReceivePrivateMessage ─>│
+  │<── ReceivePrivateMessage (招呼) ────┤                           │
+  │                                     │                           │
+  ├─ (UI 上双方出现该会话) ──────────────┤───────────────────────────┤
 ```
 
 ## 关键设计
 
-### 抽象 `Session` 基类
+### 1. 职责分离：`HubCallbackService`
 
-- `Session` 抽象类封装通用会话属性（`OtherUserName`、`LastMessage`、`MessageCollection`、`NewMessage`、`SendCommand`）
-- `PrivateSession` 继承并实现 `SendAsync()`，调用 `IChatService.SendPrivateMessageAsync`
-- 便于未来扩展 `GroupSession` 等类型
+把 SignalR 服务端→客户端的所有回调（`_hubConnection.On(...)`）抽到 `IHubCallbackService` / `HubCallbackService`：
+- `ChatService` 只负责连接 + 发送 + 转发聊天/会话事件
+- `FriendPanelViewModel` 直接订阅 `FriendRequestReceived` / `FriendRequestStatusChanged`
+- 各 ViewModel 解耦，互不依赖
 
-### 消息流推送策略
+### 2. 抽象：`UserConnectionManager`
 
-- 发送方立即收到自己发的消息（`Clients.Caller`）
-- 接收方如在线则收到（`Clients.Client(connectionId)`），并刷新会话列表
-- 双方在收到消息后都会重新拉取会话列表，保持最新顺序
+服务端把 `ConcurrentDictionary<int, string> _connections` 从 `ChatHub` 抽到 `IUserConnectionManager`：
+- `ChatHub` 不再关心连接管理细节
+- `FriendsController` 也可注入同一个管理器，用于好友申请实时推送
+- 单元测试更友好
+
+### 3. 抽象：`Session` 基类
+
+- `Session` 抽象通用属性（`OtherUserName`、`LastMessage`、`MessageCollection`、`NewMessage`、`SendCommand`）
+- `PrivateSession` 实现 `SendAsync()` 调用 `IChatService.SendPrivateMessageAsync`
+- 后续可扩展 `GroupSession`
 
 ## API 接口
 
+### HTTP
+
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| `POST` | `/api/auth/login` | 用户登录 |
-| `POST` | `/api/auth/register` | 用户注册 |
-| `POST` | `/api/friends/add` | 添加好友并创建会话 |
+| `POST` | `/api/auth/login` | 登录 |
+| `POST` | `/api/auth/register` | 注册 |
+| `POST` | `/api/friends/add` | 直接添加好友（保留旧逻辑） |
+| `POST` | `/api/friends/request` | 发送好友申请 |
+| `GET` | `/api/friends/requests/received/{userId}` | 收到的好友申请 |
+| `GET` | `/api/friends/requests/sent/{userId}` | 发出的好友申请 |
+| `POST` | `/api/friends/requests/{friendshipId}/accept` | 同意好友申请 |
+| `POST` | `/api/friends/requests/{friendshipId}/reject` | 拒绝好友申请 |
 
-### SignalR Hub 方法
+### SignalR Hub 方法（`/chathub`）
 
 | 方法 | 说明 |
 |------|------|
-| `RegisterUser(userId)` | 用户连接时注册，返回会话列表 |
+| `RegisterUser(userId)` | 注册用户连接，返回会话列表 |
 | `SendPrivateMessage(senderId, receiverId, senderName, message)` | 发送私聊消息 |
-| `SendMessage(userId, userName, message)` | 群聊消息（保留接口） |
+| `SendMessage(userId, userName, message)` | 群聊（保留） |
 
 ### SignalR 客户端事件
 
 | 事件 | 说明 |
 |------|------|
-| `LoadConversations` | 服务端推送会话列表 |
-| `ReceivePrivateMessage` | 服务端推送私聊消息 |
-| `ReceiveMessage` | 服务端推送群聊消息 |
+| `LoadConversations` | 会话列表刷新 |
+| `ReceivePrivateMessage` | 收到私聊消息 |
+| `ReceiveMessage` | 群聊消息 |
+| `FriendRequestReceived` | 收到新的好友申请 |
+| `FriendRequestStatusChanged` | 好友申请状态变化（accepted/rejected） |
 
 ## 运行
 
 ### 1. 配置数据库
 
-编辑 `ChatRoom.Server/appsettings.json`，修改 MySQL 连接字符串：
+编辑 `ChatRoom.Server/appsettings.json`：
 
 ```json
 "ConnectionStrings": {
@@ -182,7 +196,7 @@ ChatRoom/
 CREATE DATABASE ChatRoom CHARACTER SET utf8mb4;
 ```
 
-### 3. 执行数据库迁移
+### 3. 执行迁移
 
 ```bash
 cd ChatRoom.Server
@@ -196,11 +210,9 @@ cd ChatRoom.Server
 dotnet run
 ```
 
-服务端启动后监听 `http://localhost:5000`。
+监听 `http://localhost:5000`。
 
 ### 5. 启动客户端
-
-在 Visual Studio 中运行 `ChatRoom.Client`，或：
 
 ```bash
 dotnet run --project ChatRoom.Client
@@ -210,7 +222,7 @@ dotnet run --project ChatRoom.Client
 
 | 表名 | 说明 |
 |------|------|
-| `Users` | 用户表（用户名、密码哈希） |
-| `ChatMessages` | 消息表（内容、发送者、接收者、会话ID、时间） |
-| `PrivateConversations` | 私聊会话表（用户1、用户2、创建时间） |
-| `FriendShips` | 好友关系表（请求者、接收者、状态） |
+| `Users` | 用户 |
+| `ChatMessages` | 消息（含 SenderId、ReceivedId、ConversationId、SendTime） |
+| `PrivateConversations` | 私聊会话 |
+| `FriendShips` | 好友关系（Status: pending/accepted/rejected） |

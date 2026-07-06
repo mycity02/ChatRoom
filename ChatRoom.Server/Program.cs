@@ -1,4 +1,4 @@
-using ChatRoom.Server.Data;
+﻿using ChatRoom.Server.Data;
 using ChatRoom.Server.Hubs;
 using ChatRoom.Server.Interfaces;
 using ChatRoom.Server.Services;
@@ -12,14 +12,15 @@ builder.Services.AddControllers();
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
-// 注册 SignalR 服务
+// 娉ㄥ唽 SignalR 鏈嶅姟
 builder.Services.AddSignalR();
 
 // 注册自定义服务
-builder.Services.AddScoped<IAuthService,AuthService>();
+builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IFriendService, FriendService>();
+builder.Services.AddSingleton<IUserConnectionManager, UserConnectionManager>();
 
-// 注册 EF Core + MySQL
+// 娉ㄥ唽 EF Core + MySQL
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseMySql(
         builder.Configuration.GetConnectionString("Default"),
@@ -38,7 +39,9 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-// 暴露 /chathub 端点
+// 鏆撮湶 /chathub 绔偣
 app.MapHub<ChatHub>("/chathub");         
 
 app.Run();
+
+
