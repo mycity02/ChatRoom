@@ -1,5 +1,6 @@
 ﻿using ChatRoom.Client.Dto;
 using ChatRoom.Client.Interfaces;
+using ChatRoom.Client.Models;
 using System;
 using System.Net.Http;
 using System.Net.Http.Json;
@@ -120,6 +121,24 @@ namespace ChatRoom.Client.Services
                 return null;
 
             return await response.Content.ReadFromJsonAsync<FriendRequestDto>();
+        }
+
+        /// <summary>
+        /// 获取好友列表
+        /// </summary>
+        /// <param name="userId"></param>
+        /// <returns></returns>
+        public async Task<List<FriendItem>> GetFriendListAsync(int userId)
+        {
+            var response = await _httpClient.GetAsync(
+                $"/api/friends/list/{userId}");
+
+            if (response == null)
+                return new List<FriendItem>();
+
+            var result = await response.Content.ReadFromJsonAsync<List<FriendItem>>();
+
+            return result ?? new List<FriendItem>();
         }
     }
 }

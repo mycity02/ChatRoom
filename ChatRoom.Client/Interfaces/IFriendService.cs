@@ -1,4 +1,5 @@
 ﻿using ChatRoom.Client.Dto;
+using ChatRoom.Client.Models;
 
 namespace ChatRoom.Client.Interfaces
 {
@@ -47,6 +48,13 @@ namespace ChatRoom.Client.Interfaces
         /// <param name="friendshipId"></param>
         /// <returns></returns>
         Task<FriendRequestDto?> RejectFriendRequestAsync(int friendshipId);
+
+        /// <summary>
+        /// 获取好友列表
+        /// </summary>
+        /// <param name="userId"></param>
+        /// <returns></returns>
+        Task<List<FriendItem>> GetFriendListAsync(int userId);
     }
 }
 

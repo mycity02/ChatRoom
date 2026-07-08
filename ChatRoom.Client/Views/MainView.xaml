@@ -49,7 +49,8 @@
                     BorderThickness="0,0,1,0" Background="#FAFAFA">
 
                 <TabControl BorderThickness="0"
-                            Background="Transparent">
+                            Background="Transparent"
+                            SelectedIndex="{Binding SelectedLeftTabIndex, Mode=TwoWay}">
                     
                     <!-- 会话Tab -->
                     <TabItem Header="会话">
@@ -190,8 +191,10 @@
                                     <TextBlock Text="好友列表" FontWeight="Bold" FontSize="14"/>
                                 </Border>
 
-                                <ListBox Grid.Row="1" ItemsSource="{Binding FriendPanel.FriendCollection}"
-                                         BorderThickness="0" Background="Transparent">
+                                <ListBox Grid.Row="1" BorderThickness="0"
+                                         Background="Transparent"
+                                         ItemsSource="{Binding FriendPanel.FriendCollection}"
+                                         SelectedItem="{Binding FriendPanel.SelectedFriend, Mode=TwoWay}">
                                     <ListBox.ItemTemplate>
                                         <DataTemplate>
                                             <Border Padding="10,8">
@@ -330,6 +333,7 @@
         </Grid>
     </Grid>
 </Window>
+
 
 
 

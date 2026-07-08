@@ -30,6 +30,14 @@ namespace ChatRoom.Client.ViewModels
             set => SetProperty(ref _selectedSession, value);
         }
 
+        // 左侧 TabControl 的当前页：0 表示会话，1 表示好友。
+        private int _selectedLeftTabIndex;
+        public int SelectedLeftTabIndex
+        {
+            get => _selectedLeftTabIndex;
+            set => SetProperty(ref _selectedLeftTabIndex, value);
+        }
+
         /// <summary>
         /// 初始化 MainViewModel 的构造函数。
         /// </summary>
@@ -54,6 +62,7 @@ namespace ChatRoom.Client.ViewModels
 
             // 好友申请同意成功后，主窗口负责创建并选中左侧私聊会话。
             FriendPanel.FriendRequestAccepted += OnFriendRequestAccepted;
+            FriendPanel.SelectedFriendChanged += OnFriendSelected;
 
             InitializeAsync();
         }
@@ -120,6 +129,31 @@ namespace ChatRoom.Client.ViewModels
                 PrivateSessionCollection.Add(session);
                 SelectedSession = session;
             });
+        }
+
+        /// <summary>
+        /// 选中好友显示会话
+        /// </summary>
+        /// <param name="friend"></param>
+        private void OnFriendSelected(FriendItem friend)
+        {
+            var session = PrivateSessionCollection
+                .FirstOrDefault(f => f.OtherUserId == friend.Id);
+
+            if (session == null)
+            {
+                session = new PrivateSession(
+                    CurrentUserId,
+                    CurrentUserName,
+                    friend.Id,
+                    friend.UserName,
+                    _chatService
+                );
+
+                PrivateSessionCollection.Add(session);
+            }
+            SelectedSession = session;
+            SelectedLeftTabIndex = 0;
         }
 
         /// <summary>
@@ -218,3 +252,6 @@ namespace ChatRoom.Client.ViewModels
         }
     }
 }
+
+
+

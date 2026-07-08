@@ -17,6 +17,10 @@ namespace ChatRoom.Client.ViewModels
         private readonly IFriendService _friendService;
         private readonly IDialogService _dialogService;
         private readonly int _currentUserId;
+        // 选中的好友
+        private FriendItem? _selectedFriend;
+        // 选中好友时通知
+        public event Action<FriendItem>? SelectedFriendChanged;
 
         // 收到的好友申请，绑定到“收到的申请”列表。
         public ObservableCollection<FriendRequestDto> FriendRequestCollection { get; } = new();
@@ -33,6 +37,17 @@ namespace ChatRoom.Client.ViewModels
 
         // 同意好友申请后，需要通知 MainViewModel 创建并选中对应私聊会话。
         public event Action<ConversationDto>? FriendRequestAccepted;
+
+        public FriendItem? SelectedFriend
+        {
+            get => _selectedFriend;
+            set
+            {
+                // 选中好友时通知
+                if (SetProperty(ref _selectedFriend, value) && value != null)
+                    SelectedFriendChanged?.Invoke(value);
+            }
+        }
 
         public FriendPanelViewModel(
             IHubCallbackService hubCallbackService,
@@ -65,9 +80,16 @@ namespace ChatRoom.Client.ViewModels
         {
             var receivedRequests = await _friendService.GetReceivedFriendRequestsAsync(_currentUserId);
             var sentRequests = await _friendService.GetSentFriendRequestsAsync(_currentUserId);
+            // 获取好友列表
+            var getFriendList = await _friendService.GetFriendListAsync(_currentUserId);
 
             Application.Current.Dispatcher.Invoke(() =>
             {
+                // 好友列表
+                FriendCollection.Clear();
+                foreach(var friend in getFriendList)
+                    FriendCollection.Add(friend);
+
                 FriendRequestCollection.Clear();
                 foreach (var request in receivedRequests)
                 {
@@ -211,7 +233,9 @@ namespace ChatRoom.Client.ViewModels
 
             FriendRequestCollection.Remove(request);
         }
+
     }
 }
+
 
 

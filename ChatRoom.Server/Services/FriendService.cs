@@ -357,8 +357,33 @@ namespace ChatRoom.Server.Services
                 CreateTime = friendship.CreateTime
             };
         }
+
+        /// <summary>
+        /// 获取好友列表
+        /// </summary>
+        /// <param name="userId"></param>
+        /// <returns></returns>
+        public async Task<List<FriendItemDto>> GetFriendItemListAsync(int userId)
+        {
+            // 获取FriendItem对象列表
+            var friendList = await _appDbContext.Friendships
+                .Include(f => f.Requester)
+                .Include(f => f.Receiver)
+                .Where(f =>
+                    (f.ReceivedId == userId || f.RequestId == userId) &&
+                    f.Status == "accepted")
+                .Select(f => new FriendItemDto
+                {
+                    Id = f.RequestId == userId ? f.ReceivedId : f.RequestId,
+                    UserName = f.RequestId == userId ? f.Receiver.UserName : f.Requester.UserName,
+                })
+                .ToListAsync();
+
+            return friendList;
+        }
     }
 }
+
 
 
 

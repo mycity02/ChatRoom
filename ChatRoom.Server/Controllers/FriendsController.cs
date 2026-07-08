@@ -148,8 +148,21 @@ namespace ChatRoom.Server.Controllers
 
             return Ok(result);
         }
+
+        /// <summary>
+        /// 获取好友列表
+        /// </summary>
+        /// <param name="userId"></param>
+        /// <returns></returns>
+        [HttpGet("list/{userId}")]
+        public async Task<List<FriendItemDto>> GetFriendListAsync(int userId)
+        {
+            var friendList = await _friendService.GetFriendItemListAsync(userId);
+            return friendList;
+        }
     }
 }
+
 
 
 
