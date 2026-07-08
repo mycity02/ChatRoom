@@ -29,7 +29,7 @@
 
                 <StackPanel Grid.Column="1" Orientation="Horizontal">
                     <Button Content="创建群聊" Width="80" Height="26" Margin="0,0,8,0"
-                            FontSize="12"/>
+                            FontSize="12" Command="{Binding CreateGroupCommand}"/>
                     <Button Content="添加好友" Width="80" Height="26" Margin="0,0,8,0"
                             FontSize="12" Command="{Binding FriendPanel.AddFriendRequestCommand}"/>
                     <Button Content="退出" Width="60" Height="26" FontSize="12"/>
@@ -221,6 +221,56 @@
                             </Grid>
                         </Grid>
                     </TabItem>
+                    
+                    <!-- 群聊Tab -->
+                    <TabItem Header="群聊">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"></RowDefinition>
+                                <RowDefinition Height="*"></RowDefinition>
+                            </Grid.RowDefinitions>
+
+                        <Border Grid.Row="0" Padding="12,8"
+                                BorderBrush="#E0E0E0" BorderThickness="0,0,0,1">
+                            <DockPanel>
+                                <TextBlock Text="我的群聊" FontWeight="Bold"
+                                           FontSize="14" VerticalAlignment="Center"/>
+                                <Button Content="+" Width="26" Height="26"
+                                        DockPanel.Dock="Right" Command="{Binding CreateGroupCommand}"/>
+                            </DockPanel>
+                        </Border>
+
+                        <ListBox Grid.Row="1" ItemsSource="{Binding GroupSessionCollection}"
+                                 SelectedItem="{Binding SelectedGroupSession}"
+                                 BorderThickness="0" Background="Transparent">
+
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Padding="10,8">
+                                        <StackPanel Orientation="Horizontal">
+                                            <Border Width="32" Height="32" CornerRadius="16"
+                                                    Background="#FF9800" Margin="0,0,10,0">
+                                                <TextBlock Text="{Binding Icon}"  Foreground="White"
+                                                               FontSize="14" FontWeight="Bold"
+                                                               HorizontalAlignment="Center" 
+                                                               VerticalAlignment="Center"/>
+                                            </Border>
+                                            <StackPanel>
+                                                <TextBlock Text="{Binding GroupName}"
+                                                           FontWeight="Bold" FontSize="13"
+                                                           Foreground="#333"/>
+                                                <TextBlock Text="{Binding LastMessage}"
+                                                           FontSize="12" Foreground="#999"
+                                                           Margin="0,4,0,0" 
+                                                           TextTrimming="CharacterEllipsis"/>
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                        </Grid>
+                    </TabItem>
                 </TabControl>
             </Border>
 
@@ -323,6 +373,101 @@
                                    Command="{Binding SendCommand}"
                                    Width="70" Height="40"
                                    Margin="8,0,0,0" FontSize="13"/>
+                                    </Grid>
+                                </Border>
+                            </Grid>
+                        </DataTemplate>
+                    </ContentControl.ContentTemplate>
+                </ContentControl>
+                <!-- 显示选中的群聊会话 -->
+                <ContentControl Content="{Binding SelectedGroupSession}">
+                    <ContentControl.Style>
+                        <Style TargetType="ContentControl">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding SelectedLeftTabIndex}" Value="2">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </ContentControl.Style>
+
+                    <ContentControl.ContentTemplate>
+                        <DataTemplate>
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <Border Grid.Row="0"
+                                        Padding="12,8"
+                                        BorderBrush="#E0E0E0"
+                                        BorderThickness="0,0,0,1"
+                                        Background="#F5F5F5">
+                                    <TextBlock Text="{Binding GroupName}"
+                                               FontWeight="Bold"
+                                               FontSize="14"/>
+                                </Border>
+
+                                <ListBox Grid.Row="1"
+                                         ItemsSource="{Binding MessageCollection}"
+                                         BorderThickness="0"
+                                         ScrollViewer.VerticalScrollBarVisibility="Auto">
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Padding="8,4">
+                                                <StackPanel>
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <TextBlock Text="{Binding UserName}"
+                                                                   FontWeight="Bold"
+                                                                   FontSize="12"
+                                                                   Foreground="#FF9800"/>
+                                                        <TextBlock Text=": "
+                                                                   FontSize="12"
+                                                                   Foreground="#999"/>
+                                                        <TextBlock Text="{Binding SendTime, StringFormat=HH:mm}"
+                                                                   FontSize="11"
+                                                                   Foreground="#BBB"
+                                                                   Margin="8,0,0,0"/>
+                                                    </StackPanel>
+
+                                                    <TextBlock Text="{Binding Content}"
+                                                               FontSize="13"
+                                                               Margin="0,2,0,0"
+                                                               TextWrapping="Wrap"/>
+                                                </StackPanel>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+
+                                <Border Grid.Row="2"
+                                        Padding="12"
+                                        BorderBrush="#E0E0E0"
+                                        BorderThickness="0,1,0,0"
+                                        Background="#FAFAFA">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+
+                                        <TextBox Grid.Column="0"
+                                                 Text="{Binding NewMessage, UpdateSourceTrigger=PropertyChanged}"
+                                                 Height="40"
+                                                 FontSize="13"
+                                                 VerticalContentAlignment="Center"
+                                                 Padding="8,0"/>
+
+                                        <Button Grid.Column="1"
+                                                Content="发送"
+                                                Command="{Binding SendCommand}"
+                                                Width="70"
+                                                Height="40"
+                                                Margin="8,0,0,0"
+                                                FontSize="13"/>
                                     </Grid>
                                 </Border>
                             </Grid>
