@@ -12,17 +12,20 @@ namespace ChatRoom.Client.Services
         private readonly IHubCallbackService _hubCallbackService;
         private readonly IFriendService _friendService;
         private readonly IDialogService _dialogService;
+        private readonly IGroupService _groupService;
 
         public NavigationService(
             IChatService chatService,
             IHubCallbackService hubCallbackService,
             IFriendService friendService,
-            IDialogService dialogService)
+            IDialogService dialogService,
+            IGroupService groupService)
         {
             _chatService = chatService;
             _hubCallbackService = hubCallbackService;
             _friendService = friendService;
             _dialogService = dialogService;
+            _groupService = groupService;
         }
 
         /// <summary>
@@ -58,6 +61,8 @@ namespace ChatRoom.Client.Services
 
             mainView.DataContext = new MainViewModel(
                 _chatService,
+                _dialogService,
+                _groupService,
                 friendPanelViewModel,
                 userId,
                 userName);

@@ -1,6 +1,7 @@
 ﻿using ChatRoom.Client.Dto;
 using ChatRoom.Client.Interfaces;
 using ChatRoom.Client.Models;
+using Prism.Dialogs;
 using Prism.Mvvm;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -12,6 +13,7 @@ namespace ChatRoom.Client.ViewModels
     public class MainViewModel : BindableBase
     {
         private readonly IChatService _chatService;
+        private readonly IGroupService _groupService;
 
         public int ConversationId { get; set; }
         public int CurrentUserId { get; set; }
@@ -20,11 +22,13 @@ namespace ChatRoom.Client.ViewModels
         // 好友相关的列表、按钮命令、好友申请回调都放到 FriendPanelViewModel。
         public FriendPanelViewModel FriendPanel { get; }
 
-        // 私聊会话集合，只由主聊天窗口维护。
-        public ObservableCollection<PrivateSession> PrivateSessionCollection { get; } = new();
+        public GroupViewModel GroupPanel { get; }
 
-        private PrivateSession? _selectedSession;
-        public PrivateSession? SelectedSession
+        // 私聊会话集合，只由主聊天窗口维护。
+        public ObservableCollection<PrivateSessionViewModel> PrivateSessionCollection { get; } = new();
+
+        private PrivateSessionViewModel? _selectedSession;
+        public PrivateSessionViewModel? SelectedSession
         {
             get => _selectedSession;
             set => SetProperty(ref _selectedSession, value);
@@ -47,14 +51,18 @@ namespace ChatRoom.Client.ViewModels
         /// <param name="userName">当前登录用户名。</param>
         public MainViewModel(
             IChatService chatService,
+            IDialogService dialogService,
+            IGroupService groupService,
             FriendPanelViewModel friendPanel,
             int userId,
             string userName)
         {
             _chatService = chatService;
+            _groupService = groupService;
             FriendPanel = friendPanel;
             CurrentUserId = userId;
             CurrentUserName = userName;
+            GroupPanel = new GroupViewModel(CurrentUserId, CurrentUserName, FriendPanel.FriendCollection, dialogService, groupService);
 
             // 聊天消息和会话列表仍然由主窗口处理。
             _chatService.MessageReceived += OnMessageReceived;
@@ -93,7 +101,7 @@ namespace ChatRoom.Client.ViewModels
                     return;
                 }
 
-                var session = new PrivateSession(
+                var session = new PrivateSessionViewModel(
                     CurrentUserId,
                     CurrentUserName,
                     conversation.OtherUserId,
@@ -142,7 +150,7 @@ namespace ChatRoom.Client.ViewModels
 
             if (session == null)
             {
-                session = new PrivateSession(
+                session = new PrivateSessionViewModel(
                     CurrentUserId,
                     CurrentUserName,
                     friend.Id,
@@ -182,7 +190,7 @@ namespace ChatRoom.Client.ViewModels
                         ? otherUserId.Value.ToString()
                         : chatMessage.UserName;
 
-                    session = new PrivateSession(
+                    session = new PrivateSessionViewModel(
                         CurrentUserId,
                         CurrentUserName,
                         otherUserId.Value,
@@ -215,7 +223,7 @@ namespace ChatRoom.Client.ViewModels
 
                     if (session == null)
                     {
-                        session = new PrivateSession(
+                        session = new PrivateSessionViewModel(
                             CurrentUserId,
                             CurrentUserName,
                             conversation.OtherUserId,

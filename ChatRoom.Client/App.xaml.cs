@@ -18,10 +18,12 @@ namespace ChatRoom.Client
         {
             containerRegistry.RegisterSingleton<IHubCallbackService, HubCallbackService>();
             containerRegistry.RegisterSingleton<IChatService, ChatService>();
-            containerRegistry.RegisterSingleton<IFriendService, FriendService>();
             containerRegistry.RegisterSingleton<INavigationService, NavigationService>();
+            containerRegistry.RegisterSingleton<IGroupService, GroupService>();
+            containerRegistry.RegisterSingleton<IFriendService, FriendService>();
 
             containerRegistry.RegisterDialog<AddFriendDialog, AddFirendDialogViewModel>();
+            containerRegistry.RegisterDialog<CreateGroupDialog, CreateGroupDialogViewModel>();
         }
     }
 }

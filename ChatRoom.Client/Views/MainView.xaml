@@ -29,7 +29,7 @@
 
                 <StackPanel Grid.Column="1" Orientation="Horizontal">
                     <Button Content="创建群聊" Width="80" Height="26" Margin="0,0,8,0"
-                            FontSize="12" Command="{Binding CreateGroupCommand}"/>
+                            FontSize="12" Command="{Binding GroupPanel.CreateGroupCommand}"/>
                     <Button Content="添加好友" Width="80" Height="26" Margin="0,0,8,0"
                             FontSize="12" Command="{Binding FriendPanel.AddFriendRequestCommand}"/>
                     <Button Content="退出" Width="60" Height="26" FontSize="12"/>
@@ -236,12 +236,12 @@
                                 <TextBlock Text="我的群聊" FontWeight="Bold"
                                            FontSize="14" VerticalAlignment="Center"/>
                                 <Button Content="+" Width="26" Height="26"
-                                        DockPanel.Dock="Right" Command="{Binding CreateGroupCommand}"/>
+                                        DockPanel.Dock="Right" Command="{Binding GroupPanel.CreateGroupCommand}"/>
                             </DockPanel>
                         </Border>
 
-                        <ListBox Grid.Row="1" ItemsSource="{Binding GroupSessionCollection}"
-                                 SelectedItem="{Binding SelectedGroupSession}"
+                        <ListBox Grid.Row="1" ItemsSource="{Binding GroupPanel.GroupSessionCollection}"
+                                 SelectedItem="{Binding GroupPanel.SelectedGroupSession}"
                                  BorderThickness="0" Background="Transparent">
 
                             <ListBox.ItemTemplate>
@@ -380,7 +380,7 @@
                     </ContentControl.ContentTemplate>
                 </ContentControl>
                 <!-- 显示选中的群聊会话 -->
-                <ContentControl Content="{Binding SelectedGroupSession}">
+                <ContentControl Content="{Binding GroupPanel.SelectedGroupSession}">
                     <ContentControl.Style>
                         <Style TargetType="ContentControl">
                             <Setter Property="Visibility" Value="Collapsed"/>

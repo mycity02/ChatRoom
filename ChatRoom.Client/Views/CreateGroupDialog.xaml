@@ -17,7 +17,7 @@
         <TextBlock Grid.Row="0" Text="创建群聊"
                    FontSize="18" FontWeight="Bold"/>
 
-        <TextBlock Grid.Row="1" Height="36"
+        <TextBox Grid.Row="1" Height="36"
                    Text="{Binding GroupName, UpdateSourceTrigger=PropertyChanged}"
                    Margin="0,16,0,12" Padding="8,0"
                    VerticalAlignment="Center"/>
@@ -27,7 +27,7 @@
             <ListBox.ItemTemplate>
                 <DataTemplate>
                     <CheckBox Content="{Binding UserName}"
-                              IsChecked="{Binding IsSelected, Mode=Twoway}"
+                              IsChecked="{Binding IsSelected, Mode=TwoWay}"
                               Padding="8" FontSize="13"/>
                 </DataTemplate>
             </ListBox.ItemTemplate>
