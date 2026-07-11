@@ -62,8 +62,8 @@ namespace ChatRoom.Client.ViewModels
 
         public void OnDialogOpened(IDialogParameters parameters)
         {
-            var friends = parameters.GetValue<IEnumerable<FriendItem>>("friends")
-                ?? Enumerable.Empty<FriendItem>();
+            var friends = parameters.GetValue<List<FriendItem>>("friends")
+                ?? new List<FriendItem>();
 
             FriendCollection.Clear();
 

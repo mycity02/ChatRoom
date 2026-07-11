@@ -15,6 +15,8 @@ namespace ChatRoom.Client.Services
         public event Action<ChatMessage> MessageReceived;
         public event Action<List<ChatMessage>> HistoryMessagesLoad;
         public event Action<List<ConversationDto>> ConversationLoad;
+        public event Action<long, ChatMessage> GroupMessageReceived;
+        public event Action<GroupDto> GroupCreated;
 
         public ChatService(IHubCallbackService hubCallbackService)
         {
@@ -29,6 +31,13 @@ namespace ChatRoom.Client.Services
             _hubCallbackService.MessageReceived += chatMessage => MessageReceived?.Invoke(chatMessage);
             _hubCallbackService.HistoryMessagesLoad += messages => HistoryMessagesLoad?.Invoke(messages);
             _hubCallbackService.ConversationLoad += conversations => ConversationLoad?.Invoke(conversations);
+
+           
+            _hubCallbackService.GroupMessageReceived += (groupId, chatMessage) => 
+                GroupMessageReceived?.Invoke(groupId, chatMessage);
+
+            _hubCallbackService.GroupCreated += group =>
+                GroupCreated?.Invoke(group);
 
             // 所有 _hubConnection.On(...) 都集中放在 HubCallbackService 里注册。
             _hubCallbackService.RegisterCallbacks(_hubConnection);
@@ -77,6 +86,20 @@ namespace ChatRoom.Client.Services
         public async Task SendPrivateMessageAsync(int senderId, int receiverId, string senderName, string message)
         {
             await _hubConnection.InvokeAsync("SendPrivateMessage", senderId, receiverId, senderName, message);
+        }
+
+        /// <summary>
+        /// 发送群消息
+        /// </summary>
+        /// <param name="groupId"></param>
+        /// <param name="senderId"></param>
+        /// <param name="senderName"></param>
+        /// <param name="message"></param>
+        /// <returns></returns>
+        public async Task SendGroupMessageAsync(long groupId, int senderId, string senderName, string message)
+        {
+            await _hubConnection.InvokeAsync("SendGroupMessage", groupId,
+                senderId, senderName, message);
         }
     }
 }

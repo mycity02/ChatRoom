@@ -18,5 +18,9 @@ namespace ChatRoom.Server.Data
         public DbSet<PrivateConversation> PrivateConversations { get; set; }
         // 联系人表
         public DbSet<FriendShip> Friendships { get; set; }
+
+        public DbSet<Group> Groups { get; set; }
+
+        public DbSet<GroupMember> GroupMembers { get; set; }
     }
 }

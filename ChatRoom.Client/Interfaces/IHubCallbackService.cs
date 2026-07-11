@@ -23,6 +23,12 @@ namespace ChatRoom.Client.Interfaces
         // 好友申请状态发生变化，比如 accepted / rejected
         event Action<FriendRequestDto>? FriendRequestStatusChanged;
 
+        // 接收群消息事件
+        event Action<long, ChatMessage>? GroupMessageReceived;
+
+        // 接收被加入新群的通知
+        event Action<GroupDto>? GroupCreated;
+
         /// <summary>
         /// 注册所有 SignalR 服务端回调。
         /// </summary>

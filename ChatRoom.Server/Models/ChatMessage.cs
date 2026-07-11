@@ -19,6 +19,9 @@ namespace ChatRoom.Server.Models
 
         public long? ConversationId { get; set; }
 
+        // 群聊Id
+        public long? GroupId { get; set; }
+
         public DateTime SendTime { get; set; } = DateTime.Now;
 
         [ForeignKey(nameof(SenderId))]
@@ -29,5 +32,8 @@ namespace ChatRoom.Server.Models
 
         [ForeignKey(nameof(ConversationId))]
         public PrivateConversation? PrivateConversation { get; set; }
+
+        [ForeignKey(nameof(GroupId))]
+        public Group? Group { get; set; }
     }
 }

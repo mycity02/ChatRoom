@@ -2,8 +2,8 @@
 
 基于 **ASP.NET Core + SignalR + WPF (Prism MVVM)** 的实时聊天应用，支持：
 - 一对一私聊
-- 好友申请流程
-- 群聊（创建/UI/消息接口已搭建，服务端 API 暂未实现）
+- 好友申请流程（添加/同意/拒绝）
+- 群聊（创建 / 成员管理 / 实时消息推送）
 
 ## 技术栈
 
@@ -26,13 +26,19 @@ ChatRoom/
 │   ├── Controllers/
 │   │   ├── AuthController.cs                 # 登录/注册 API
 │   │   ├── FriendsController.cs              # 好友/会话 API
-│   │   └── WeatherForecastController.cs      # 模板示例（可删）
+│   │   └── GroupController.cs                # 群聊 API
 │   ├── Hubs/
-│   │   └── ChatHub.cs                        # SignalR 消息中心（私聊 + 群聊保留）
+│   │   └── ChatHub.cs                        # SignalR 消息中心
+│   │       ├── RegisterUser                  # 注册连接
+│   │       ├── SendPrivateMessage            # 私聊消息
+│   │       ├── SendMessage                   # 公共消息
+│   │       └── SendGroupMessage              # 群聊消息
 │   ├── Models/                               # EF Core 实体
 │   │   ├── User.cs
-│   │   ├── ChatMessage.cs                    # 私聊消息
+│   │   ├── ChatMessage.cs                    # 消息（含 ConversationId / GroupId）
 │   │   ├── PrivateConversation.cs            # 私聊会话
+│   │   ├── Group.cs                          # 群聊
+│   │   ├── GroupMember.cs                    # 群成员（(GroupId,UserId) 唯一索引）
 │   │   └── FriendShip.cs                     # 好友关系（pending/accepted/rejected）
 │   ├── Dto/
 │   │   ├── UserDto.cs / FriendDto.cs
@@ -41,20 +47,23 @@ ChatRoom/
 │   │   ├── ConversationDto.cs                # 私聊会话 DTO
 │   │   ├── FriendRequestDto.cs
 │   │   ├── AcceptFriendRequestResultDto.cs
-│   │   └── FriendItemDto.cs
+│   │   ├── FriendItemDto.cs
+│   │   ├── CreateGroupDto.cs                 # 创建群请求
+│   │   └── GroupDto.cs                       # 群聊 DTO
 │   ├── Interfaces/
 │   │   ├── IAuthService.cs
 │   │   ├── IFriendService.cs
+│   │   ├── IGroupService.cs                  # 群聊服务接口
 │   │   └── IUserConnectionManager.cs         # SignalR 连接管理
 │   ├── Services/
 │   │   ├── AuthService.cs
 │   │   ├── FriendService.cs                  # 好友/会话业务逻辑
+│   │   ├── GroupService.cs                   # 群聊业务（必须为好友才能拉入群）
 │   │   └── UserConnectionManager.cs          # ConcurrentDictionary<int, string>
 │   ├── Data/
 │   │   └── AppDbContext.cs
-│   ├── Migrations/                           # EF Core 迁移
-│   ├── WeatherForecast.cs                    # 模板示例（可删）
-│   ├── Program.cs
+│   ├── Migrations/                           # EF Core 迁移（含 AddGroupChat / AddGroupMessageSupport）
+│   ├── Program.cs                            # 注册 IGroupService 等
 │   └── appsettings.json
 │
 └── ChatRoom.Client/                          # WPF 客户端
@@ -66,12 +75,12 @@ ChatRoom/
     │   └── CreateGroupDialog.xaml            # 创建群聊弹窗
     ├── ViewModels/
     │   ├── LoginViewModel.cs
-    │   ├── MainViewModel.cs                  # 主界面协调器
+    │   ├── MainViewModel.cs                  # 主界面协调器（订阅 GroupMessageReceived / GroupCreated）
     │   ├── ChatViewModel.cs
     │   ├── AddFirendDialogViewModel.cs
     │   ├── FriendPanelViewModel.cs           # 好友面板（好友 + 申请）
-    │   ├── GroupViewModel.cs                 # 群聊面板
-    │   ├── GroupSessionViewModel.cs          # 单个群聊会话
+    │   ├── GroupViewModel.cs                 # 群聊面板（含 LoadGroupsAsync 启动加载）
+    │   ├── GroupSessionViewModel.cs          # 单个群聊会话（注入 IChatService 发送群消息）
     │   ├── CreateGroupDialogViewModel.cs     # 创建群弹窗逻辑
     │   ├── CreateGroupMemberItemViewModel.cs # 群成员勾选项
     │   ├── SessionViewModel.cs               # 会话抽象基类（BindableBase）
@@ -82,19 +91,19 @@ ChatRoom/
     ├── Dto/
     │   ├── FriendDto.cs / FriendRequestDto.cs
     │   ├── ConversationDto.cs
-    │   ├── CreateGroupDto.cs                 # 创建群请求
-    │   └── GroupDto.cs                       # 群聊 DTO
+    │   ├── CreateGroupDto.cs
+    │   └── GroupDto.cs
     ├── Services/
-    │   ├── ChatService.cs                    # SignalR 连接与发送
-    │   ├── HubCallbackService.cs             # SignalR 回调注册
+    │   ├── ChatService.cs                    # SignalR 连接 + 转发聊天/会话/群聊事件
+    │   ├── HubCallbackService.cs             # SignalR 回调集中注册
     │   ├── FriendService.cs                  # 好友 HTTP 服务
     │   ├── GroupService.cs                   # 群聊 HTTP 服务
     │   └── NavigationService.cs
     ├── Interfaces/
-    │   ├── IChatService.cs
+    │   ├── IChatService.cs                   # 含 GroupMessageReceived / GroupCreated / SendGroupMessageAsync
     │   ├── IFriendService.cs
-    │   ├── IGroupService.cs                  # 群聊服务接口
-    │   ├── IHubCallbackService.cs
+    │   ├── IGroupService.cs
+    │   ├── IHubCallbackService.cs            # 集中注册所有 Hub 回调
     │   └── INavigationService.cs
     └── App.xaml.cs                           # Prism DI 容器
 ```
@@ -105,45 +114,65 @@ ChatRoom/
 - ✅ 一对一实时私聊（SignalR）
 - ✅ 好友申请流程：发起 → 待处理 → 同意/拒绝 → 自动建会话
 - ✅ 好友面板（收到 / 发出的申请 + 好友列表）
-- ✅ 群聊 UI（创建群弹窗 + 群聊 Tab + `GroupSessionViewModel`）
-- 🚧 群聊消息：客户端已搭好 `MessageCollection` / `NewMessage` / `SendCommand`，**服务端 API 待实现**
-- ✅ 抽象的 `SessionViewModel` 基类（便于扩展会话类型）
+- ✅ 群聊全流程：
+  - 创建群聊（输入群名 + 多选好友，**只能拉好友进群**）
+  - 启动时自动加载我的群聊
+  - 创建后通过 SignalR `GroupCreated` 通知在线群成员
+  - 群消息持久化到 MySQL
+  - 群消息通过 SignalR `ReceiveGroupMessage` 推送给所有在线群成员
+- ✅ 抽象的 `SessionViewModel` 基类
 - ✅ 职责分离的 `UserConnectionManager` / `IHubCallbackService`
-- ✅ 消息持久化到 MySQL
 - ✅ 收到消息时自动刷新会话列表
 
 ## 群聊流程
 
-### 创建群聊（客户端已实现，服务端待实现）
+### 创建群聊
 
 ```
-用户                                  服务端
-  │                                    │
-  ├─ 打开 CreateGroupDialog ──────────>│
-  │   （传入 FriendCollection）        │
-  ├─ 输入群名 + 勾选成员               │
-  ├─ Confirm ────────────────────────>│
-  │                                    │
-  │  POST /api/groups/create           │
-  │  { OwnerId, GroupName, MemberIds } │
-  │ ─────────────────────────────────> │
-  │                                    ├─ 🚧 GroupsController 待实现
-  │<── GroupDto ─────────────────────┤
-  │                                    │
-  ├─ AddOrUpdateGroup ───────────────>│
-  │   （更新 GroupSessionCollection）  │
-  │   （自动选中新建的群）             │
+用户A (群主)                              服务端                       用户B/C（在线成员）
+  │                                        │                              │
+  ├─ 打开 CreateGroupDialog ──────────────>│                              │
+  │   （传入 FriendCollection）            │                              │
+  ├─ 输入群名 + 勾选成员 (B、C)            │                              │
+  ├─ Confirm ─────────────────────────────>│                              │
+  │   POST /api/groups/create              │                              │
+  │   { OwnerId, GroupName, MemberIds }    │                              │
+  │   ─────────────────────────────────> │                              │
+  │                                        ├─ 校验：成员必须是 Owner 好友 │
+  │                                        ├─ 写入 Group + GroupMembers   │
+  │                                        ├─ 查在线成员 B、C             │
+  │                                        ├─ SignalR GroupCreated → B/C │
+  │<── GroupDto ──────────────────────────┤── ReceiveGroupCreated ──────>│
+  │                                        │                              │
+  ├─ AddOrUpdateGroup(本地) ─────────────>│                              │
+  │   GroupSessionCollection.Add(...)      │                              │
+  │                                        │                              │
+  │                                        │◄── (B/C 收到后调用)          │
+  │                                        │   GET /api/groups/my/{id}    │
 ```
 
-### 群聊消息（占位，**待实现**）
+### 发送群消息
 
-> 当前 `GroupSessionViewModel.SendAsync()` 已搭好框架（`MessageCollection`、`NewMessage`、`SendCommand`），
-> 但 `IGroupService.CreateGroupAsync` / `GetMyGroupAsync` 调用的是**未实现**的服务端 API。
-> 后续需要：
-> - 服务端：`GroupsController`（`POST /api/groups/create`、`GET /api/groups/my/{userId}`）
-> - 服务端：`IGroupService` / `GroupService`（创建群、查我的群、群成员入库）
-> - 服务端：EF Core 实体 `Group.cs` / `GroupMember.cs`
-> - SignalR：`ChatHub.SendGroupMessage` 广播 + `ReceiveGroupMessage` 推送
+```
+用户A                          服务端                       用户B/C（群成员）
+  │                              │                              │
+  ├─ Send (在 GroupSession) ──>│                              │
+  │  ChatService                │                              │
+  │   .SendGroupMessageAsync ──>│                              │
+  │   InvokeAsync("SendGroupMessage", ...)                    │
+  │                              ├─ 校验：是否群成员            │
+  │                              ├─ 保存到 ChatMessages         │
+  │                              ├─ 查所有群成员 connectionIds │
+  │                              ├─ SignalR ReceiveGroupMessage│
+  │<── (本地未直接收到，依赖广播)──┤── ReceiveGroupMessage ──────>│
+  │                              │                              │
+  ├─ GroupPanel.OnMessage ──>   │                              │
+  │   MessageCollection.Add(...) │                              │
+  │                              │                              │
+  ├─ 回到群列表看到 LastMessage  │                              │
+```
+
+> ⚠️ 当前 `SendGroupMessage` 服务端**只向在线群成员广播**，离线成员登录后尚未自动拉取群历史消息。如需可后续扩展 `GET /api/groups/{id}/messages` 或在 `RegisterUser` 阶段加载。
 
 ## 关键设计
 
@@ -165,7 +194,7 @@ SessionViewModel (abstract, BindableBase)
 | 子 ViewModel | 职责 |
 |--------------|------|
 | `FriendPanelViewModel` | 好友 + 好友申请（收到/发出 + 同意/拒绝） |
-| `GroupViewModel` | 群聊会话集合 + 创建群 + 接收群消息 |
+| `GroupViewModel` | 群聊会话集合 + 创建群 + 接收群消息 + 启动加载 |
 | `MainViewModel` | 私聊会话集合 + 协调子面板 + SignalR 连接 |
 
 ### 3. SignalR 回调统一注册（`IHubCallbackService`）
@@ -178,12 +207,19 @@ SessionViewModel (abstract, BindableBase)
 ### 4. 连接管理（`IUserConnectionManager`）
 
 服务端把 `ConcurrentDictionary<int, string> _connections` 从 `ChatHub` 抽出：
-- `ChatHub` / `FriendsController` 共用同一连接字典
+- `ChatHub` / `FriendsController` / `GroupController` 共用同一连接字典
 - 单元测试更友好
+
+### 5. 群聊安全：只允许拉好友入群
+
+`GroupService.CreateGroupAsync` 校验：
+- 群主 / 群成员用户必须存在
+- 所有被拉入的成员必须**已与群主是好友**（`FriendShips.Status == "accepted"`）
+- 群成员数量 ≥ 1
 
 ## API 接口
 
-### HTTP（已实现）
+### HTTP
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
@@ -196,12 +232,7 @@ SessionViewModel (abstract, BindableBase)
 | `POST` | `/api/friends/requests/{friendshipId}/accept` | 同意好友申请 |
 | `POST` | `/api/friends/requests/{friendshipId}/reject` | 拒绝好友申请 |
 | `GET` | `/api/friends/list/{userId}` | 我的好友列表 |
-
-### HTTP（🚧 客户端调用但服务端未实现）
-
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| `POST` | `/api/groups/create` | 创建群聊 |
+| `POST` | `/api/groups/create` | 创建群聊（仅好友可入群） |
 | `GET` | `/api/groups/my/{userId}` | 我加入的群聊 |
 
 ### SignalR Hub 方法（`/chathub`）
@@ -210,7 +241,8 @@ SessionViewModel (abstract, BindableBase)
 |------|------|
 | `RegisterUser(userId)` | 注册连接，返回会话列表 |
 | `SendPrivateMessage(senderId, receiverId, senderName, message)` | 私聊消息 |
-| `SendMessage(userId, userName, message)` | 群聊（保留接口） |
+| `SendMessage(userId, userName, message)` | 公共消息（保留） |
+| `SendGroupMessage(groupId, senderId, userName, message)` | 群消息（非成员抛 HubException） |
 
 ### SignalR 客户端事件
 
@@ -218,9 +250,11 @@ SessionViewModel (abstract, BindableBase)
 |------|------|
 | `LoadConversations` | 会话列表刷新 |
 | `ReceivePrivateMessage` | 私聊消息 |
-| `ReceiveMessage` | 群聊消息（保留） |
+| `ReceiveMessage` | 公共消息（保留） |
 | `FriendRequestReceived` | 收到好友申请 |
 | `FriendRequestStatusChanged` | 好友申请状态变化 |
+| `ReceiveGroupMessage` | 群消息推送（含 groupId + ChatMessage） |
+| `GroupCreated` | 被加入新群通知（在线群成员） |
 
 ## 运行
 
@@ -247,6 +281,11 @@ cd ChatRoom.Server
 dotnet ef database update
 ```
 
+迁移包含：
+- `Init` / `AddUserName` / `MakeSenderIdNullable` / `AddPrivateChatSupport` / `AddPrivateConversation`
+- `AddGroupChat`（新增 Groups / GroupMembers 表）
+- `AddGroupMessageSupport`（ChatMessage 新增 GroupId）
+
 ### 4. 启动服务端
 
 ```bash
@@ -267,17 +306,16 @@ dotnet run --project ChatRoom.Client
 | 表名 | 说明 |
 |------|------|
 | `Users` | 用户 |
-| `ChatMessages` | 私聊消息（SenderId、ReceivedId、ConversationId、SendTime） |
+| `ChatMessages` | 消息（SenderId、ReceivedId、ConversationId、**GroupId**、SendTime） |
 | `PrivateConversations` | 私聊会话 |
+| `Groups` | 群聊（GroupId、GroupName、OwnerId、CreateTime） |
+| `GroupMembers` | 群成员（GroupId、UserId、JoinTime，**唯一索引**） |
 | `FriendShips` | 好友关系（Status: pending/accepted/rejected） |
-
-> 注：群聊相关表（`Groups` / `GroupMembers` / `GroupMessages`）需后续迁移添加。
 
 ## TODO
 
-- [ ] 服务端实现 `GroupsController` / `IGroupService` / `GroupService`
-- [ ] EF Core 实体：`Group.cs` / `GroupMember.cs` / `GroupMessage.cs` + 迁移
-- [ ] `IChatService.SendGroupMessageAsync` + `ChatHub.SendGroupMessage` 广播
-- [ ] 客户端 `GroupSessionViewModel.SendAsync` 调用 `IChatService.SendGroupMessageAsync`
 - [ ] `GroupSessionViewModel` 改为继承 `SessionViewModel`（统一抽象）
+- [ ] 离线群消息拉取：注册时加载我的群历史消息 / `GET /api/groups/{id}/messages`
+- [ ] 群消息未读计数 + 群消息推送时自动选中会话
 - [ ] 清理 `WeatherForecastController.cs` / `WeatherForecast.cs` 模板文件
+- [ ] `ChatHub.SendMessage` 公共消息接口是否保留待定

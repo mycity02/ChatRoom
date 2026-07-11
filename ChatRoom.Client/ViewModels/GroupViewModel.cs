@@ -16,6 +16,7 @@ namespace ChatRoom.Client.ViewModels
         private readonly ObservableCollection<FriendItem> _friendCollection;
         private readonly IDialogService _dialogService;
         private readonly IGroupService _groupService;
+        private readonly IChatService _chatService;
 
         private GroupSessionViewModel? _selectedGroupSession;
 
@@ -34,7 +35,8 @@ namespace ChatRoom.Client.ViewModels
             string currentUserName,
             ObservableCollection<FriendItem> friendCollection,
             IDialogService dialogService,
-            IGroupService groupService
+            IGroupService groupService,
+            IChatService chatService
             )
         {
             _currentUserId = currentUserId;
@@ -42,8 +44,10 @@ namespace ChatRoom.Client.ViewModels
             _friendCollection = friendCollection;
             _dialogService = dialogService;
             _groupService = groupService;
+            _chatService = chatService;
 
             CreateGroupCommand = new DelegateCommand(CreateGroup);
+            _ = LoadGroupsAsync();
         }
 
         /// <summary>
@@ -53,10 +57,10 @@ namespace ChatRoom.Client.ViewModels
         {
             var parameters = new DialogParameters
             {
-                { "friends", _friendCollection }
+                { "friends", _friendCollection.ToList() }
             };
 
-            _dialogService.ShowDialog("CreateGroupDialog", async result =>
+            _dialogService.ShowDialog("CreateGroupDialog", parameters, async result =>
             {
                 if (result.Result != ButtonResult.OK)
                     return;
@@ -80,6 +84,30 @@ namespace ChatRoom.Client.ViewModels
             });
         }
 
+        /// <summary>
+        /// 加载群聊列表
+        /// </summary>
+        /// <returns></returns>
+        private async Task LoadGroupsAsync()
+        {
+            try
+            {
+                var groups = await _groupService.GetMyGroupAsync(_currentUserId);
+
+                foreach (var group in groups)
+                {
+                    AddOrUpdateGroup(
+                        group.GroupId,
+                        group.GroupName,
+                        group.LastMessage);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("加载群聊列表失败");
+            }
+        }
+
         public void AddOrUpdateGroup(long groupId, string groupName, string lastMessage = "")
         {
             var exists = GroupSessionCollection
@@ -97,13 +125,19 @@ namespace ChatRoom.Client.ViewModels
                 _currentUserId,
                 _currentUserName,
                 groupId,
-                groupName);
+                groupName,
+                _chatService);
 
             session.LastMessage = lastMessage;
             GroupSessionCollection.Add(session);
             SelectedGroupSession = session;
         }
 
+        /// <summary>
+        /// 接收群聊消息
+        /// </summary>
+        /// <param name="groupId"></param>
+        /// <param name="message"></param>
         public void ReceiveGroupMessage(long groupId, ChatMessage message)
         {
             var session = GroupSessionCollection

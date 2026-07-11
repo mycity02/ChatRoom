@@ -165,35 +165,72 @@ namespace ChatRoom.Server.Hubs
             await _dbContext.SaveChangesAsync();
             await Clients.All.SendAsync("ReceiveMessage", userName, message);
         }
-
-        /// <summary>
-        /// 在客户端连接到Hub时，加载最近的50条群聊消息并发送给调用者。
-        /// </summary>
-        /// <returns></returns>
-        //public override async Task OnConnectedAsync()
-        //{
-        //    var recentMessages = await _dbContext.ChatMessages
-        //        .Where(m => m.ReceivedId == null)
-        //        .OrderByDescending(m => m.SendTime)
-        //        .Take(50)
-        //        .OrderBy(m => m.SendTime)
-        //        .ToListAsync();
-
-        //    await Clients.Caller.SendAsync("LoadHistory", recentMessages);
-        //    await base.OnConnectedAsync();
-        //}
-
-        /// <summary>
-        /// 在客户端断开连接时，从UserConnection字典中移除该连接ID对应的用户ID。
-        /// </summary>
-        /// <param name="exception"></param>
-        /// <returns></returns>
+        
         public override Task OnDisconnectedAsync(Exception? exception)
         {
             // 用户断开时移除连接记录
             _userConnectionManager.RemoveConnection(Context.ConnectionId);
 
             return base.OnDisconnectedAsync(exception);
+        }
+
+        public async Task SendGroupMessage(long groupId, int senderId, 
+            string userName, string message)
+        {
+            if (groupId <= 0 || senderId <= 0 || string.IsNullOrWhiteSpace(message))
+                return;
+
+            // 只允许群内成员发送信息
+            var isMember = await _dbContext.GroupMembers
+                .AnyAsync(member =>
+                    member.GroupId == groupId &&
+                    member.UserId == senderId);
+
+            if (!isMember)
+                throw new HubException("你不是该群成员");
+
+            var chatMessage = new ChatMessage
+            {
+                SenderId = senderId,
+                UserName = userName,
+                Content = message.Trim(),
+                GroupId = groupId,
+                SendTime = DateTime.Now
+            };
+
+            _dbContext.ChatMessages.Add(chatMessage);
+            await _dbContext.SaveChangesAsync();
+
+            // 查出群成员 只推送给在线用户
+            var memberIds = await _dbContext.GroupMembers
+                .Where(member => member.GroupId == groupId)
+                .Select(member => member.UserId)
+                .ToListAsync();
+
+            var connectionIds = memberIds
+                .Select(memberId =>
+                    _userConnectionManager.TryGetConnection(
+                        memberId, out var connectionId) ? connectionId : null)
+                .Where(connectionId => connectionId != null)
+                .Cast<string>()
+                .Distinct()
+                .ToList();
+
+            if (connectionIds.Count == 0)
+                return;
+
+            var messageDto = new
+            {
+                SenderId = chatMessage.SenderId,
+                UserName = chatMessage.UserName,
+                Content = chatMessage.Content,
+                GroupId = chatMessage.GroupId,
+                SendTime = chatMessage.SendTime
+            };
+
+            // 向在线用户推送消息
+            await Clients.Clients(connectionIds)
+                .SendAsync("ReceiveGroupMessage", groupId, messageDto);
         }
     }
 }

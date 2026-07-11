@@ -14,6 +14,8 @@ namespace ChatRoom.Client.Services
         public event Action<List<ConversationDto>>? ConversationLoad;
         public event Action<FriendRequestDto>? FriendRequestReceived;
         public event Action<FriendRequestDto>? FriendRequestStatusChanged;
+        public event Action<long, ChatMessage>? GroupMessageReceived;
+        public event Action<GroupDto>? GroupCreated;
 
         /// <summary>
         /// 统一注册 Hub 服务端主动推送到客户端的所有回调。
@@ -61,6 +63,18 @@ namespace ChatRoom.Client.Services
             hubConnection.On<FriendRequestDto>("FriendRequestStatusChanged", request =>
             {
                 FriendRequestStatusChanged?.Invoke(request);
+            });
+
+            // 接收群聊消息
+            hubConnection.On<long, ChatMessage>(
+                "ReceiveGroupMessage", (groupId, chatMessage) =>
+                {
+                    GroupMessageReceived?.Invoke(groupId, chatMessage);
+                });
+
+            hubConnection.On<GroupDto>("GroupCreated", group =>
+            {
+                GroupCreated?.Invoke(group);
             });
         }
     }

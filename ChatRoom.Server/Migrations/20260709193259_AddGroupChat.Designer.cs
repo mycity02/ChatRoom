@@ -4,6 +4,7 @@ using ChatRoom.Server.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace ChatRoom.Server.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260709193259_AddGroupChat")]
+    partial class AddGroupChat
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -37,9 +40,6 @@ namespace ChatRoom.Server.Migrations
                     b.Property<long?>("ConversationId")
                         .HasColumnType("bigint");
 
-                    b.Property<long?>("GroupId")
-                        .HasColumnType("bigint");
-
                     b.Property<int?>("ReceivedId")
                         .HasColumnType("int");
 
@@ -56,8 +56,6 @@ namespace ChatRoom.Server.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("ConversationId");
-
-                    b.HasIndex("GroupId");
 
                     b.HasIndex("ReceivedId");
 
@@ -201,10 +199,6 @@ namespace ChatRoom.Server.Migrations
                         .WithMany("ChatMessages")
                         .HasForeignKey("ConversationId");
 
-                    b.HasOne("ChatRoom.Server.Models.Group", "Group")
-                        .WithMany("Messages")
-                        .HasForeignKey("GroupId");
-
                     b.HasOne("ChatRoom.Server.Models.User", "Receiver")
                         .WithMany()
                         .HasForeignKey("ReceivedId");
@@ -214,8 +208,6 @@ namespace ChatRoom.Server.Migrations
                         .HasForeignKey("SenderId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("Group");
 
                     b.Navigation("PrivateConversation");
 
@@ -295,8 +287,6 @@ namespace ChatRoom.Server.Migrations
             modelBuilder.Entity("ChatRoom.Server.Models.Group", b =>
                 {
                     b.Navigation("Members");
-
-                    b.Navigation("Messages");
                 });
 
             modelBuilder.Entity("ChatRoom.Server.Models.PrivateConversation", b =>

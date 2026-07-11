@@ -140,6 +140,13 @@ namespace ChatRoom.Client.ViewModels
                 }
 
                 SentFriendRequestCollection.Add(request);
+
+                if (request.Status == "accepted")
+                {
+                    AddFriendIfMissing(
+                        request.ReceivedUserId,
+                        request.ReceivedUserName);
+                }
             });
         }
 
@@ -210,6 +217,10 @@ namespace ChatRoom.Client.ViewModels
                 FriendRequestCollection.Remove(exists);
             }
 
+            AddFriendIfMissing(
+                conversation.OtherUserId,
+                conversation.OtherUserName);
+
             // 好友面板不直接操作左侧会话列表，只把结果交给 MainViewModel。
             FriendRequestAccepted?.Invoke(conversation);
         }
@@ -234,6 +245,17 @@ namespace ChatRoom.Client.ViewModels
             FriendRequestCollection.Remove(request);
         }
 
+        private void AddFriendIfMissing(int userId, string userName)
+        {
+            if (FriendCollection.Any(friend => friend.Id == userId))
+                return;
+
+            FriendCollection.Add(new FriendItem
+            {
+                Id = userId,
+                UserName = userName
+            });
+        }
     }
 }
 

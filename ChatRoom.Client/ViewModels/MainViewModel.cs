@@ -1,6 +1,7 @@
 ﻿using ChatRoom.Client.Dto;
 using ChatRoom.Client.Interfaces;
 using ChatRoom.Client.Models;
+using DryIoc.ImTools;
 using Prism.Dialogs;
 using Prism.Mvvm;
 using System.Collections.Generic;
@@ -62,11 +63,20 @@ namespace ChatRoom.Client.ViewModels
             FriendPanel = friendPanel;
             CurrentUserId = userId;
             CurrentUserName = userName;
-            GroupPanel = new GroupViewModel(CurrentUserId, CurrentUserName, FriendPanel.FriendCollection, dialogService, groupService);
+            GroupPanel = new GroupViewModel(
+                CurrentUserId,
+                CurrentUserName,
+                FriendPanel.FriendCollection,
+                dialogService,
+                groupService,
+                _chatService);
 
             // 聊天消息和会话列表仍然由主窗口处理。
             _chatService.MessageReceived += OnMessageReceived;
             _chatService.ConversationLoad += OnConversationLoad;
+
+            _chatService.GroupMessageReceived += OnGroupMessageReceived;
+            _chatService.GroupCreated += OnGroupCreated;
 
             // 好友申请同意成功后，主窗口负责创建并选中左侧私聊会话。
             FriendPanel.FriendRequestAccepted += OnFriendRequestAccepted;
@@ -256,6 +266,29 @@ namespace ChatRoom.Client.ViewModels
                 {
                     SelectedSession = PrivateSessionCollection.FirstOrDefault();
                 }
+            });
+        }
+
+        /// <summary>
+        /// 接收群聊消息
+        /// </summary>
+        /// <param name="groupId"></param>
+        /// <param name="chatMessage"></param>
+        public void OnGroupMessageReceived(long groupId, ChatMessage chatMessage)
+        {
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                GroupPanel.ReceiveGroupMessage(groupId, chatMessage);
+            });
+        }
+        private void OnGroupCreated(GroupDto group)
+        {
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                GroupPanel.AddOrUpdateGroup(
+                    group.GroupId,
+                    group.GroupName,
+                    group.LastMessage);
             });
         }
     }

@@ -16,6 +16,12 @@ namespace ChatRoom.Client.Interfaces
         // 会话加载事件
         event Action<List<ConversationDto>> ConversationLoad;
 
+        // 接收群聊消息：群 Id + 消息内容
+        event Action<long, ChatMessage> GroupMessageReceived;
+
+        // 接收被加入新群的通知
+        event Action<GroupDto> GroupCreated;
+
         // 连接服务器
         Task ConnectAsync();
 
@@ -27,5 +33,8 @@ namespace ChatRoom.Client.Interfaces
 
         // 发送私聊消息
         Task SendPrivateMessageAsync(int senderId, int receiverId, string senderName, string message);
+
+        // 发送群消息
+        Task SendGroupMessageAsync(long groupId, int senderId, string senderName, string message);
     }
 }

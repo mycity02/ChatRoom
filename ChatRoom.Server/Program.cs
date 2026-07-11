@@ -19,6 +19,7 @@ builder.Services.AddSignalR();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IFriendService, FriendService>();
 builder.Services.AddSingleton<IUserConnectionManager, UserConnectionManager>();
+builder.Services.AddScoped<IGroupService, GroupService>();
 
 // 娉ㄥ唽 EF Core + MySQL
 builder.Services.AddDbContext<AppDbContext>(options =>

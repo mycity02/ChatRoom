@@ -1,4 +1,5 @@
-﻿using ChatRoom.Client.Models;
+﻿using ChatRoom.Client.Interfaces;
+using ChatRoom.Client.Models;
 using Prism.Commands;
 using Prism.Mvvm;
 using System.Collections.ObjectModel;
@@ -9,6 +10,7 @@ namespace ChatRoom.Client.ViewModels
     {
         private readonly int _currentUserId;
         private readonly string _currentUserName;
+        private readonly IChatService _chatService;
 
         private string _groupName = string.Empty;
         private string _lastMessage = string.Empty;
@@ -50,10 +52,12 @@ namespace ChatRoom.Client.ViewModels
             int currentUserId,
             string currentUserName,
             long groupId,
-            string groupName)
+            string groupName,
+            IChatService chatService)
         {
             _currentUserId = currentUserId;
             _currentUserName = currentUserName;
+            _chatService = chatService;
             GroupId = groupId;
             GroupName = groupName;
             SendCommand = new DelegateCommand(Send);
@@ -64,15 +68,24 @@ namespace ChatRoom.Client.ViewModels
             await SendAsync();
         }
 
+        /// <summary>
+        /// 发送信息
+        /// </summary>
+        /// <returns></returns>
         private async Task SendAsync()
         {
-            if (string.IsNullOrWhiteSpace(NewMessage))
+            var message = NewMessage.Trim();
+
+            if (string.IsNullOrWhiteSpace(message))
                 return;
 
-            // 后续接入 IChatService.SendGroupMessageAsync(...)
-            NewMessage = string.Empty;
+            await _chatService.SendGroupMessageAsync(
+                GroupId,
+                _currentUserId,
+                _currentUserName,
+                message);
 
-            await Task.CompletedTask;
+            NewMessage = string.Empty;
         }
     }
 }
