@@ -66,5 +66,23 @@ namespace ChatRoom.Server.Controllers
 
             return Ok(groups);
         }
+        /// <summary>
+        /// 获取群历史消息。userId 用于服务端校验访问者是否为群成员。
+        /// </summary>
+        [HttpGet("{groupId:long}/messages")]
+        public async Task<IActionResult> GetGroupMessagesAsync(
+            long groupId,
+            [FromQuery] int userId)
+        {
+            if (groupId <= 0 || userId <= 0)
+                return BadRequest("群聊或用户 Id 无效");
+
+            var messages = await _groupService.GetGroupMessagesAsync(groupId, userId);
+
+            if (messages == null)
+                return Forbid();
+
+            return Ok(messages);
+        }
     }
 }

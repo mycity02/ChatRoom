@@ -25,7 +25,11 @@ namespace ChatRoom.Client.ViewModels
         public GroupSessionViewModel? SelectedGroupSession
         {
             get => _selectedGroupSession;
-            set => SetProperty(ref _selectedGroupSession, value);
+            set
+            {
+                if (SetProperty(ref _selectedGroupSession, value) && value != null)
+                    _ = LoadGroupHistoryAsync(value);
+            }
         }
 
         public DelegateCommand CreateGroupCommand { get; }
@@ -99,16 +103,74 @@ namespace ChatRoom.Client.ViewModels
                     AddOrUpdateGroup(
                         group.GroupId,
                         group.GroupName,
-                        group.LastMessage);
+                        group.LastMessage,
+                        select: false);
                 }
+
+                // 批量恢复列表后只选中一个群，避免同时加载每个群的历史消息。
+                SelectedGroupSession ??= GroupSessionCollection.FirstOrDefault();
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 MessageBox.Show("加载群聊列表失败");
             }
         }
 
-        public void AddOrUpdateGroup(long groupId, string groupName, string lastMessage = "")
+        /// <summary>
+        /// 首次选中群聊时加载最近消息。实时消息与历史消息可能交错到达，
+        /// 因此按发送者、内容和时间去重后再追加到界面集合。
+        /// </summary>
+        private async Task LoadGroupHistoryAsync(GroupSessionViewModel session)
+        {
+            if (session.IsHistoryLoaded)
+                return;
+
+            try
+            {
+                var history = await _groupService.GetGroupMessagesAsync(
+                    session.GroupId,
+                    _currentUserId);
+
+                Application.Current.Dispatcher.Invoke(() =>
+                {
+                    if (session.IsHistoryLoaded)
+                        return;
+
+                    foreach (var message in history)
+                    {
+                        var exists = session.MessageCollection.Any(existing =>
+                            existing.SenderId == message.SenderId &&
+                            existing.Content == message.Content &&
+                            existing.SendTime == message.SendTime);
+
+                        if (exists)
+                            continue;
+
+                        session.MessageCollection.Add(new ChatMessage
+                        {
+                            SenderId = message.SenderId,
+                            UserName = message.UserName,
+                            Content = message.Content,
+                            SendTime = message.SendTime
+                        });
+                    }
+
+                    if (session.MessageCollection.Count > 0)
+                        session.LastMessage = session.MessageCollection[^1].Content;
+
+                    session.IsHistoryLoaded = true;
+                });
+            }
+            catch (Exception)
+            {
+                MessageBox.Show("加载群聊历史消息失败");
+            }
+        }
+        public void AddOrUpdateGroup(
+            long groupId,
+            string groupName,
+            string lastMessage = "",
+            bool select = true)
         {
             var exists = GroupSessionCollection
                 .FirstOrDefault(group => group.GroupId == groupId);
@@ -117,7 +179,9 @@ namespace ChatRoom.Client.ViewModels
             {
                 exists.GroupName = groupName;
                 exists.LastMessage = lastMessage;
-                SelectedGroupSession = exists;
+                if (select)
+                    SelectedGroupSession = exists;
+
                 return;
             }
 
@@ -130,7 +194,8 @@ namespace ChatRoom.Client.ViewModels
 
             session.LastMessage = lastMessage;
             GroupSessionCollection.Add(session);
-            SelectedGroupSession = session;
+            if (select)
+                SelectedGroupSession = session;
         }
 
         /// <summary>

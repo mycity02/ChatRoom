@@ -22,5 +22,10 @@ namespace ChatRoom.Client.Interfaces
         /// <param name="userId"></param>
         /// <returns></returns>
         Task<List<GroupDto>> GetMyGroupAsync(int userId);
+
+        /// <summary>
+        /// 获取当前用户有权限查看的群历史消息。
+        /// </summary>
+        Task<List<GroupMessageDto>> GetGroupMessagesAsync(long groupId, int userId);
     }
 }

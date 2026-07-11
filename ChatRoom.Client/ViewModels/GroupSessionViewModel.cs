@@ -40,6 +40,9 @@ namespace ChatRoom.Client.ViewModels
 
         public ObservableCollection<ChatMessage> MessageCollection { get; } = new();
 
+        // 历史消息只在首次选中该群时加载，避免重复追加同一批数据。
+        public bool IsHistoryLoaded { get; set; }
+
         public string NewMessage
         {
             get => _newMessage;

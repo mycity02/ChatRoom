@@ -3,7 +3,7 @@
 基于 **ASP.NET Core + SignalR + WPF (Prism MVVM)** 的实时聊天应用，支持：
 - 一对一私聊
 - 好友申请流程（添加/同意/拒绝）
-- 群聊（创建 / 成员管理 / 实时消息推送）
+- 群聊（创建 / 成员管理 / 实时消息推送 / 历史消息拉取）
 
 ## 技术栈
 
@@ -26,7 +26,7 @@ ChatRoom/
 │   ├── Controllers/
 │   │   ├── AuthController.cs                 # 登录/注册 API
 │   │   ├── FriendsController.cs              # 好友/会话 API
-│   │   └── GroupController.cs                # 群聊 API
+│   │   ├── GroupController.cs                # 群聊 API（创建 / 我的群 / 历史消息）
 │   ├── Hubs/
 │   │   └── ChatHub.cs                        # SignalR 消息中心
 │   │       ├── RegisterUser                  # 注册连接
@@ -49,7 +49,8 @@ ChatRoom/
 │   │   ├── AcceptFriendRequestResultDto.cs
 │   │   ├── FriendItemDto.cs
 │   │   ├── CreateGroupDto.cs                 # 创建群请求
-│   │   └── GroupDto.cs                       # 群聊 DTO
+│   │   ├── GroupDto.cs                       # 群聊 DTO
+│   │   └── GroupMessageDto.cs                # 群消息 DTO（避免暴露 EF 实体）
 │   ├── Interfaces/
 │   │   ├── IAuthService.cs
 │   │   ├── IFriendService.cs
@@ -79,8 +80,8 @@ ChatRoom/
     │   ├── ChatViewModel.cs
     │   ├── AddFirendDialogViewModel.cs
     │   ├── FriendPanelViewModel.cs           # 好友面板（好友 + 申请）
-    │   ├── GroupViewModel.cs                 # 群聊面板（含 LoadGroupsAsync 启动加载）
-    │   ├── GroupSessionViewModel.cs          # 单个群聊会话（注入 IChatService 发送群消息）
+    │   ├── GroupViewModel.cs                 # 群聊面板（首次选中群时拉历史消息）
+    │   ├── GroupSessionViewModel.cs          # 单个群聊会话（IsHistoryLoaded 防重复加载）
     │   ├── CreateGroupDialogViewModel.cs     # 创建群弹窗逻辑
     │   ├── CreateGroupMemberItemViewModel.cs # 群成员勾选项
     │   ├── SessionViewModel.cs               # 会话抽象基类（BindableBase）
@@ -92,7 +93,8 @@ ChatRoom/
     │   ├── FriendDto.cs / FriendRequestDto.cs
     │   ├── ConversationDto.cs
     │   ├── CreateGroupDto.cs
-    │   └── GroupDto.cs
+    │   ├── GroupDto.cs
+    │   └── GroupMessageDto.cs                # 群历史消息 DTO
     ├── Services/
     │   ├── ChatService.cs                    # SignalR 连接 + 转发聊天/会话/群聊事件
     │   ├── HubCallbackService.cs             # SignalR 回调集中注册
@@ -120,6 +122,8 @@ ChatRoom/
   - 创建后通过 SignalR `GroupCreated` 通知在线群成员
   - 群消息持久化到 MySQL
   - 群消息通过 SignalR `ReceiveGroupMessage` 推送给所有在线群成员
+  - **群历史消息拉取**：首次选中群时通过 `GET /api/groups/{id}/messages` 拉取最近 50 条，实时消息与历史消息按 (Sender, Content, SendTime) 去重
+  - **群历史消息安全校验**：仅群成员可读取，非成员返回 403
 - ✅ 抽象的 `SessionViewModel` 基类
 - ✅ 职责分离的 `UserConnectionManager` / `IHubCallbackService`
 - ✅ 收到消息时自动刷新会话列表
@@ -172,7 +176,33 @@ ChatRoom/
   ├─ 回到群列表看到 LastMessage  │                              │
 ```
 
-> ⚠️ 当前 `SendGroupMessage` 服务端**只向在线群成员广播**，离线成员登录后尚未自动拉取群历史消息。如需可后续扩展 `GET /api/groups/{id}/messages` 或在 `RegisterUser` 阶段加载。
+### 拉取群历史消息
+
+```
+用户A (群成员)                    服务端
+  │                                │
+  ├─ 选中 GroupSession ─────────>│
+  │  (SelectedGroupSession setter)│
+  │                                │
+  ├─ 首次：IsHistoryLoaded = false│
+  │                                │
+  │  GET /api/groups/{id}/messages?userId={id}
+  │  ──────────────────────────>  │
+  │                                ├─ 校验：是否群成员
+  │                                │  （非成员 → 403 Forbid）
+  │                                ├─ 查最近 50 条（按 SendTime 倒序）
+  │                                ├─ 再按时间正序返回
+  │<── List<GroupMessageDto> ────┤
+  │                                │
+  ├─ 按 (SenderId, Content,       │
+  │   SendTime) 去重追加到        │
+  │   MessageCollection           │
+  │                                │
+  ├─ IsHistoryLoaded = true       │
+  │  （后续不再重复加载）          │
+```
+
+> 已读消息不持久化到客户端，但 `IsHistoryLoaded` 标志保证同一会话不会重复请求历史。
 
 ## 关键设计
 
@@ -217,6 +247,14 @@ SessionViewModel (abstract, BindableBase)
 - 所有被拉入的成员必须**已与群主是好友**（`FriendShips.Status == "accepted"`）
 - 群成员数量 ≥ 1
 
+### 6. 群历史消息：API + 客户端去重
+
+- `GET /api/groups/{groupId}/messages?userId={userId}` 服务端只返回**群成员**请求的最近 50 条（按 `SendTime` 倒序取，再正序返回）
+- 非群成员请求返回 `403 Forbid`
+- 客户端 `GroupSessionViewModel.IsHistoryLoaded` 标志：同一会话**只拉一次**
+- 实时消息与历史消息可能交错到达（发送时立即广播，刷新时历史已包含），
+  `GroupViewModel.LoadGroupHistoryAsync` 按 `(SenderId, Content, SendTime)` 三元组去重
+
 ## API 接口
 
 ### HTTP
@@ -234,6 +272,7 @@ SessionViewModel (abstract, BindableBase)
 | `GET` | `/api/friends/list/{userId}` | 我的好友列表 |
 | `POST` | `/api/groups/create` | 创建群聊（仅好友可入群） |
 | `GET` | `/api/groups/my/{userId}` | 我加入的群聊 |
+| `GET` | `/api/groups/{groupId}/messages?userId={userId}` | 群历史消息（最近 50 条，仅群成员可访问） |
 
 ### SignalR Hub 方法（`/chathub`）
 
@@ -315,7 +354,7 @@ dotnet run --project ChatRoom.Client
 ## TODO
 
 - [ ] `GroupSessionViewModel` 改为继承 `SessionViewModel`（统一抽象）
-- [ ] 离线群消息拉取：注册时加载我的群历史消息 / `GET /api/groups/{id}/messages`
+- [x] ~~离线群消息拉取：注册时加载我的群历史消息 / `GET /api/groups/{id}/messages`~~（已通过首次选中群时拉取实现）
 - [ ] 群消息未读计数 + 群消息推送时自动选中会话
 - [ ] 清理 `WeatherForecastController.cs` / `WeatherForecast.cs` 模板文件
 - [ ] `ChatHub.SendMessage` 公共消息接口是否保留待定

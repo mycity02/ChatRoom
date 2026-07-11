@@ -49,5 +49,18 @@ namespace ChatRoom.Client.Services
             return await _httpClient.GetFromJsonAsync<List<GroupDto>>($"/api/groups/my/{userId}")
                 ?? new List<GroupDto>();
         }
+        /// <summary>
+        /// 请求指定群的最近历史消息。服务端会校验当前用户是否属于该群。
+        /// </summary>
+        public async Task<List<GroupMessageDto>> GetGroupMessagesAsync(long groupId, int userId)
+        {
+            var response = await _httpClient.GetAsync(
+                $"api/groups/{groupId}/messages?userId={userId}");
+
+            response.EnsureSuccessStatusCode();
+
+            return await response.Content.ReadFromJsonAsync<List<GroupMessageDto>>()
+                ?? new List<GroupMessageDto>();
+        }
     }
 }

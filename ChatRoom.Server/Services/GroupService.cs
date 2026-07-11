@@ -118,5 +118,32 @@ namespace ChatRoom.Server.Services
                 })
                 .ToListAsync();
         }
+        /// <summary>
+        /// 仅允许群成员读取该群历史消息，避免通过 groupId 查看其他群内容。
+        /// </summary>
+        public async Task<List<GroupMessageDto>?> GetGroupMessagesAsync(long groupId, int userId)
+        {
+            var isMember = await _appDbContext.GroupMembers
+                .AnyAsync(member => member.GroupId == groupId && member.UserId == userId);
+
+            if (!isMember)
+                return null;
+
+            // 先取最新 50 条，再按时间正序返回，客户端可直接追加到消息列表。
+            return await _appDbContext.ChatMessages
+                .AsNoTracking()
+                .Where(message => message.GroupId == groupId)
+                .OrderByDescending(message => message.SendTime)
+                .Take(50)
+                .OrderBy(message => message.SendTime)
+                .Select(message => new GroupMessageDto
+                {
+                    SenderId = message.SenderId,
+                    UserName = message.UserName,
+                    Content = message.Content,
+                    SendTime = message.SendTime
+                })
+                .ToListAsync();
+        }
     }
 }
